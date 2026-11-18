@@ -8,7 +8,9 @@ submissions, and like projects.
 
 - Next.js 16, React 19, and strict TypeScript
 - Tailwind CSS v4
-- React Bits Dock navigation, installed as the TypeScript/Tailwind component
+- React Bits Dock navigation with a single theme/Settings divider and profile reminder badge
+- Particle Text brand and Warp Text home headline
+- Slide Commit sign-in and sign-up controls
 - MongoDB-backed accounts, projects, and likes
 - Project posts as an external URL or HTML, CSS, and JavaScript files
 - Isolated iframe previews for submitted code
@@ -55,6 +57,7 @@ pnpm build
 - `/projects` — community project feed
 - `/submit` — post a link or upload/edit HTML, CSS, and JavaScript files
 - `/login` — sign in or create an account
+- `/settings` — profile settings and photo reminder
 - `/about` — information about the portal
 
 ## API routes
