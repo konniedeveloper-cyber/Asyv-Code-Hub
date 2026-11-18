@@ -1,7 +1,16 @@
 "use client";
 
 import Dock, { type DockItemData } from "@/components/Dock";
-import { Compass, House, Info, Moon, Plus, Settings, Sun } from "lucide-react";
+import {
+  Code2,
+  Compass,
+  House,
+  Info,
+  Moon,
+  Plus,
+  Settings,
+  Sun,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
 import { useSyncExternalStore, type ReactNode } from "react";
@@ -9,6 +18,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 const DESTINATIONS = [
   { label: "Home", href: "/", icon: House },
   { label: "Explore projects", href: "/projects", icon: Compass },
+  { label: "My projects", href: "/my-projects", icon: Code2 },
   { label: "Post a project", href: "/submit", icon: Plus },
   { label: "About the hub", href: "/about", icon: Info },
 ] as const;

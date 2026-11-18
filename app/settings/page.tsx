@@ -1,3 +1,4 @@
+import { AccountSettings } from "@/components/auth/account-settings";
 import { createMetadata } from "@/lib/metadata";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -20,7 +21,8 @@ export default function SettingsPage(): ReactNode {
       <h1 className="text-4xl leading-tight font-semibold tracking-tight sm:text-5xl">
         Settings
       </h1>
-      <section className="border-foreground/10 mt-8 rounded-2xl border p-5 sm:p-6">
+      <AccountSettings />
+      <section className="border-foreground/10 mt-5 rounded-2xl border p-5 sm:p-6">
         <h2 className="text-lg font-semibold">Profile picture</h2>
         <p className="text-foreground/65 mt-2 max-w-2xl text-sm leading-relaxed">
           Add a profile picture to help classmates recognize your projects.

@@ -4,7 +4,7 @@ import { compare, hash } from "bcryptjs";
 import { AuthError } from "@/lib/errors";
 import { getDb, isDuplicateKey } from "@/lib/mongodb";
 import { getSessionUserId } from "@/lib/session";
-import type { PublicUser } from "@/lib/types";
+import type { AdminStudent, PublicUser, UserRole } from "@/lib/types";
 
 const USERS = "users";
 
@@ -14,6 +14,7 @@ type UserDoc = {
   email: string;
   passwordHash: string;
   createdAt: Date;
+  role?: UserRole;
 };
 
 function toPublic(user: UserDoc): PublicUser {
@@ -21,6 +22,7 @@ function toPublic(user: UserDoc): PublicUser {
     id: user._id.toHexString(),
     name: user.name,
     email: user.email,
+    role: user.role === "admin" ? "admin" : "student",
   };
 }
 
@@ -44,12 +46,14 @@ export async function registerUser(input: {
       email: input.email,
       passwordHash,
       createdAt: new Date(),
+      role: "student",
     });
 
     return {
       id: result.insertedId.toHexString(),
       name: input.name,
       email: input.email,
+      role: "student",
     };
   } catch (error) {
     if (isDuplicateKey(error)) {
@@ -81,4 +85,64 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
   const db = await getDb();
   const user = await db.collection<UserDoc>(USERS).findOne({ _id: objectId });
   return user ? toPublic(user) : null;
+}
+
+export async function listStudents(): Promise<AdminStudent[]> {
+  const db = await getDb();
+  const students = await db
+    .collection<UserDoc>(USERS)
+    .find(
+      { role: { $ne: "admin" } },
+      { projection: { _id: 1, name: 1, email: 1, createdAt: 1, role: 1 } }
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  return students.map((student) => ({
+    id: student._id.toHexString(),
+    name: student.name,
+    email: student.email,
+    createdAt: student.createdAt.toISOString(),
+  }));
+}
+
+export async function deleteStudent(
+  studentId: string,
+  adminId: string
+): Promise<"deleted" | "not-found" | "forbidden"> {
+  const studentObjectId = toObjectId(studentId);
+  const adminObjectId = toObjectId(adminId);
+  if (
+    !studentObjectId ||
+    !adminObjectId ||
+    studentObjectId.equals(adminObjectId)
+  ) {
+    return "forbidden";
+  }
+
+  const db = await getDb();
+  const users = db.collection<UserDoc>(USERS);
+  const student = await users.findOne(
+    { _id: studentObjectId },
+    { projection: { role: 1 } }
+  );
+  if (!student) return "not-found";
+  if (student.role === "admin") return "forbidden";
+
+  const projects = db.collection("projects");
+  const authoredProjects = await projects
+    .find({ authorId: studentObjectId }, { projection: { _id: 1 } })
+    .toArray();
+  const projectIds = authoredProjects.map((project) => project._id);
+
+  await db.collection("likes").deleteMany({
+    $or: [{ userId: studentObjectId }, { projectId: { $in: projectIds } }],
+  });
+  await projects.deleteMany({ authorId: studentObjectId });
+
+  const result = await users.deleteOne({
+    _id: studentObjectId,
+    role: { $ne: "admin" },
+  });
+  return result.deletedCount === 1 ? "deleted" : "forbidden";
 }

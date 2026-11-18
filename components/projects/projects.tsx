@@ -1,9 +1,10 @@
 "use client";
 
-import { Code2, ExternalLink, Heart, Link2, RotateCw } from "lucide-react";
+import { Code2, ExternalLink, Link2, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
+import PulseHeart from "@/components/PulseHeart";
 import type { ProjectCard } from "@/lib/types";
 import { isRecord, readError, readLikeResult } from "@/lib/parse";
 
@@ -20,6 +21,7 @@ function isProjectCard(value: unknown): value is ProjectCard {
     typeof value.description === "string" &&
     (value.kind === "link" || value.kind === "files") &&
     (value.url === null || typeof value.url === "string") &&
+    (value.coverImage === null || typeof value.coverImage === "string") &&
     typeof value.authorName === "string" &&
     typeof value.likeCount === "number" &&
     typeof value.likedByMe === "boolean" &&
@@ -163,11 +165,19 @@ function ProjectCardView({ project }: { project: ProjectCard }): ReactNode {
   const [likeCount, setLikeCount] = useState(project.likeCount);
   const [error, setError] = useState<string | null>(null);
   const [savingLike, setSavingLike] = useState(false);
+  const [pulseKey, setPulseKey] = useState(0);
 
-  async function toggleLike(): Promise<void> {
+  async function toggleLike(
+    nextLiked: boolean,
+    nextCount: number
+  ): Promise<void> {
     if (savingLike) return;
+    const previousLiked = liked;
+    const previousCount = likeCount;
     setSavingLike(true);
     setError(null);
+    setLiked(nextLiked);
+    setLikeCount(nextCount);
     try {
       const response = await fetch(`/api/projects/${project.id}/like`, {
         method: "POST",
@@ -178,17 +188,26 @@ function ProjectCardView({ project }: { project: ProjectCard }): ReactNode {
         setError(
           response.status === 401 ? "Sign in to like projects." : message
         );
+        setLiked(previousLiked);
+        setLikeCount(previousCount);
+        setPulseKey((key) => key + 1);
         return;
       }
       const result = readLikeResult(data);
       if (!result) {
         setError("The like action returned an unexpected response.");
+        setLiked(previousLiked);
+        setLikeCount(previousCount);
+        setPulseKey((key) => key + 1);
         return;
       }
       setLiked(result.liked);
       setLikeCount(result.likeCount);
     } catch {
       setError("Could not update your like. Try again.");
+      setLiked(previousLiked);
+      setLikeCount(previousCount);
+      setPulseKey((key) => key + 1);
     } finally {
       setSavingLike(false);
     }
@@ -199,7 +218,14 @@ function ProjectCardView({ project }: { project: ProjectCard }): ReactNode {
       id={project.id}
       className="project-card border-foreground/10 bg-background flex min-w-0 flex-col overflow-hidden rounded-3xl border"
     >
-      {project.kind === "files" ? (
+      {project.coverImage ? (
+        <div
+          role="img"
+          aria-label={`Cover image for ${project.title}`}
+          className="border-foreground/10 aspect-[16/10] w-full border-b bg-cover bg-center"
+          style={{ backgroundImage: `url("${project.coverImage}")` }}
+        />
+      ) : project.kind === "files" ? (
         <iframe
           title={`Preview of ${project.title}`}
           src={`/api/projects/${project.id}/preview`}
@@ -251,25 +277,28 @@ function ProjectCardView({ project }: { project: ProjectCard }): ReactNode {
               <ExternalLink aria-hidden="true" className="h-4 w-4" />
             </a>
           ) : (
-            <span className="text-foreground/55 inline-flex items-center gap-2 text-sm">
-              <Code2 aria-hidden="true" className="h-4 w-4" />
-              Live preview
-            </span>
+            <Link
+              href={`/projects/${project.id}/preview`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
+            >
+              Open preview
+              <ExternalLink aria-hidden="true" className="h-4 w-4" />
+            </Link>
           )}
-          <button
-            type="button"
-            onClick={() => void toggleLike()}
+          <PulseHeart
+            key={pulseKey}
+            liked={liked}
+            count={likeCount}
+            onChange={(nextLiked, nextCount) =>
+              void toggleLike(nextLiked, nextCount)
+            }
             disabled={savingLike}
-            aria-label={`${liked ? "Unlike" : "Like"} ${project.title}; ${likeCount} likes`}
-            aria-pressed={liked}
-            className="focus-ring hover:bg-foreground/5 inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm transition-colors disabled:opacity-50"
-          >
-            <Heart
-              aria-hidden="true"
-              className={`h-4 w-4 ${liked ? "fill-current text-rose-500" : ""}`}
-            />
-            {likeCount}
-          </button>
+            label={`${liked ? "Unlike" : "Like"} ${project.title}`}
+            size={24}
+            className="focus-ring"
+          />
         </div>
         {error ? (
           <p role="status" className="text-foreground/60 mt-2 text-xs">

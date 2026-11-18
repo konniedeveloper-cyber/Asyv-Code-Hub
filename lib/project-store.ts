@@ -5,7 +5,10 @@ import type {
   ProjectCard,
   ProjectDetail,
   ProjectDraft,
+  ProjectManagementItem,
+  ProjectSourceFile,
   PublicUser,
+  ProjectStatus,
 } from "@/lib/types";
 
 const PROJECTS = "projects";
@@ -19,9 +22,15 @@ type ProjectDoc = {
   description: string;
   kind: "link" | "files";
   url: string | null;
+  coverImage?: string | null;
   html: string | null;
   css: string | null;
   js: string | null;
+  files?: ProjectSourceFile[] | null;
+  status?: ProjectStatus;
+  reviewReason?: string | null;
+  reviewedAt?: Date | null;
+  reviewedBy?: ObjectId | null;
   createdAt: Date;
 };
 
@@ -48,6 +57,7 @@ function toCard(
     description: doc.description,
     kind: doc.kind,
     url: doc.url,
+    coverImage: doc.coverImage ?? null,
     authorName: doc.authorName,
     likeCount,
     likedByMe,
@@ -66,13 +76,42 @@ function toDetail(
   };
 }
 
+function toManagementItem(doc: ProjectDoc): ProjectManagementItem {
+  return {
+    id: doc._id.toHexString(),
+    title: doc.title,
+    description: doc.description,
+    kind: doc.kind,
+    url: doc.url,
+    coverImage: doc.coverImage ?? null,
+    authorName: doc.authorName,
+    status: doc.status ?? "approved",
+    reviewReason: doc.reviewReason ?? null,
+    createdAt: doc.createdAt.toISOString(),
+  };
+}
+
 export async function listProjects(
   viewerId: string | null
 ): Promise<ProjectCard[]> {
   const db = await getDb();
   const docs = await db
     .collection<ProjectDoc>(PROJECTS)
-    .find({})
+    .find(
+      { $or: [{ status: "approved" }, { status: { $exists: false } }] },
+      {
+        projection: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          kind: 1,
+          url: 1,
+          coverImage: 1,
+          authorName: 1,
+          createdAt: 1,
+        },
+      }
+    )
     .sort({ createdAt: -1 })
     .limit(60)
     .toArray();
@@ -99,6 +138,63 @@ export async function listProjects(
     const key = doc._id.toHexString();
     return toCard(doc, counts.get(key) ?? 0, liked.has(key));
   });
+}
+
+export async function listMyProjects(
+  userId: string
+): Promise<ProjectManagementItem[]> {
+  const authorId = toObjectId(userId);
+  if (!authorId) return [];
+
+  const db = await getDb();
+  const docs = await db
+    .collection<ProjectDoc>(PROJECTS)
+    .find(
+      { authorId },
+      {
+        projection: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          kind: 1,
+          url: 1,
+          coverImage: 1,
+          authorName: 1,
+          status: 1,
+          reviewReason: 1,
+          createdAt: 1,
+        },
+      }
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+  return docs.map(toManagementItem);
+}
+
+export async function listAdminProjects(): Promise<ProjectManagementItem[]> {
+  const db = await getDb();
+  const docs = await db
+    .collection<ProjectDoc>(PROJECTS)
+    .find(
+      {},
+      {
+        projection: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          kind: 1,
+          url: 1,
+          coverImage: 1,
+          authorName: 1,
+          status: 1,
+          reviewReason: 1,
+          createdAt: 1,
+        },
+      }
+    )
+    .sort({ createdAt: -1 })
+    .toArray();
+  return docs.map(toManagementItem);
 }
 
 export async function getProject(
@@ -137,9 +233,15 @@ export async function createProject(
     description: draft.description,
     kind: draft.kind,
     url: draft.kind === "link" ? draft.url : null,
-    html: draft.kind === "files" ? draft.html : null,
-    css: draft.kind === "files" ? draft.css : null,
-    js: draft.kind === "files" ? draft.js : null,
+    coverImage: draft.coverImage,
+    html: null,
+    css: null,
+    js: null,
+    files: draft.kind === "files" ? draft.files : null,
+    status: "pending",
+    reviewReason: null,
+    reviewedAt: null,
+    reviewedBy: null,
     createdAt: new Date(),
   };
 
@@ -148,22 +250,96 @@ export async function createProject(
 }
 
 export async function getProjectFiles(
-  id: string
-): Promise<{ html: string; css: string; js: string } | null> {
+  id: string,
+  viewer: Pick<PublicUser, "id" | "role"> | null
+): Promise<ProjectSourceFile[] | null> {
   const objectId = toObjectId(id);
   if (!objectId) return null;
 
   const db = await getDb();
-  const doc = await db
-    .collection<ProjectDoc>(PROJECTS)
-    .findOne({ _id: objectId });
+  const doc = await db.collection<ProjectDoc>(PROJECTS).findOne(
+    { _id: objectId },
+    {
+      projection: {
+        _id: 1,
+        authorId: 1,
+        kind: 1,
+        status: 1,
+        files: 1,
+        html: 1,
+        css: 1,
+        js: 1,
+      },
+    }
+  );
   if (!doc || doc.kind !== "files") return null;
+  const viewerId = viewer ? toObjectId(viewer.id) : null;
+  const isOwner = viewerId !== null && doc.authorId.equals(viewerId);
+  if (
+    (doc.status ?? "approved") !== "approved" &&
+    viewer?.role !== "admin" &&
+    !isOwner
+  ) {
+    return null;
+  }
 
-  return {
-    html: doc.html ?? "",
-    css: doc.css ?? "",
-    js: doc.js ?? "",
-  };
+  if (doc.files?.length) return doc.files;
+
+  return [
+    { name: "index.html", content: doc.html ?? "" },
+    { name: "style.css", content: doc.css ?? "" },
+    { name: "script.js", content: doc.js ?? "" },
+  ];
+}
+
+export async function reviewProject(
+  id: string,
+  reviewerId: string,
+  status: "approved" | "rejected",
+  reason: string | null
+): Promise<"updated" | "not-pending" | null> {
+  const projectId = toObjectId(id);
+  const adminId = toObjectId(reviewerId);
+  if (!projectId || !adminId) return null;
+
+  const db = await getDb();
+  const result = await db.collection<ProjectDoc>(PROJECTS).updateOne(
+    { _id: projectId, status: "pending" },
+    {
+      $set: {
+        status,
+        reviewReason: status === "rejected" ? reason : null,
+        reviewedAt: new Date(),
+        reviewedBy: adminId,
+      },
+    }
+  );
+  if (result.matchedCount === 1) return "updated";
+
+  const existing = await db
+    .collection<ProjectDoc>(PROJECTS)
+    .findOne({ _id: projectId }, { projection: { _id: 1 } });
+  return existing ? "not-pending" : null;
+}
+
+export async function deleteProject(
+  id: string,
+  actor: Pick<PublicUser, "id" | "role">
+): Promise<boolean> {
+  const projectId = toObjectId(id);
+  const actorId = toObjectId(actor.id);
+  if (!projectId || !actorId) return false;
+
+  const filter =
+    actor.role === "admin"
+      ? { _id: projectId }
+      : { _id: projectId, authorId: actorId };
+  const db = await getDb();
+  const result = await db.collection<ProjectDoc>(PROJECTS).deleteOne(filter);
+  if (result.deletedCount === 0) return false;
+
+  await db.collection<LikeDoc>(LIKES).deleteMany({ projectId });
+  return true;
 }
 
 export async function toggleLike(
@@ -175,9 +351,13 @@ export async function toggleLike(
   if (!userObjectId || !projectObjectId) return null;
 
   const db = await getDb();
-  const project = await db
-    .collection<ProjectDoc>(PROJECTS)
-    .findOne({ _id: projectObjectId }, { projection: { _id: 1 } });
+  const project = await db.collection<ProjectDoc>(PROJECTS).findOne(
+    {
+      _id: projectObjectId,
+      $or: [{ status: "approved" }, { status: { $exists: false } }],
+    },
+    { projection: { _id: 1 } }
+  );
   if (!project) return null;
 
   const likes = db.collection<LikeDoc>(LIKES);

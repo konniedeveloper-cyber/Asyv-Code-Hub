@@ -13,6 +13,8 @@ async function ensureIndexes(db: Db): Promise<void> {
   await Promise.all([
     db.collection("users").createIndex({ email: 1 }, { unique: true }),
     db.collection("projects").createIndex({ createdAt: -1 }),
+    db.collection("projects").createIndex({ authorId: 1, createdAt: -1 }),
+    db.collection("projects").createIndex({ status: 1, createdAt: -1 }),
     db.collection("likes").createIndex({ projectId: 1 }),
     db
       .collection("likes")
