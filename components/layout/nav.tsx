@@ -10,6 +10,7 @@ import {
   Plus,
   Settings,
   Sun,
+  UserRound,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ const DESTINATIONS = [
   { label: "Explore projects", href: "/projects", icon: Compass },
   { label: "My projects", href: "/my-projects", icon: Code2 },
   { label: "Post a project", href: "/submit", icon: Plus },
-  { label: "About the hub", href: "/about", icon: Info },
+  { label: "About the hub", href: "/about", icon: Settings },
 ] as const;
 
 export function Nav(): ReactNode {
@@ -63,10 +64,16 @@ export function Nav(): ReactNode {
     { separator: true },
     {
       label: "Settings",
-      icon: <Settings aria-hidden="true" />,
+      icon: <Info aria-hidden="true" />,
       active: pathname === "/settings" || pathname.startsWith("/settings/"),
       badge: true,
       onClick: () => router.push("/settings"),
+    },
+    {
+      label: "Sign in / Sign up",
+      icon: <UserRound aria-hidden="true" />,
+      active: pathname === "/login",
+      onClick: () => router.push("/login"),
     },
   ];
 
