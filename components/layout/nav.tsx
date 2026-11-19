@@ -21,7 +21,6 @@ const DESTINATIONS = [
   { label: "Explore projects", href: "/projects", icon: Compass },
   { label: "My projects", href: "/my-projects", icon: Code2 },
   { label: "Post a project", href: "/submit", icon: Plus },
-  { label: "About the hub", href: "/about", icon: Settings },
 ] as const;
 
 export function Nav(): ReactNode {
@@ -48,6 +47,13 @@ export function Nav(): ReactNode {
       };
     }),
     {
+      label: "Settings",
+      icon: <Settings aria-hidden="true" />,
+      active: pathname === "/settings" || pathname.startsWith("/settings/"),
+      badge: true,
+      onClick: () => router.push("/settings"),
+    },
+    {
       label:
         mounted && resolvedTheme === "dark"
           ? "Switch to light mode"
@@ -63,11 +69,10 @@ export function Nav(): ReactNode {
     },
     { separator: true },
     {
-      label: "Settings",
+      label: "About the hub",
       icon: <Info aria-hidden="true" />,
-      active: pathname === "/settings" || pathname.startsWith("/settings/"),
-      badge: true,
-      onClick: () => router.push("/settings"),
+      active: pathname === "/about" || pathname.startsWith("/about/"),
+      onClick: () => router.push("/about"),
     },
     {
       label: "Sign in / Sign up",
