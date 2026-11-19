@@ -169,6 +169,7 @@ export function AuthForm(): ReactNode {
             height={56}
             trackColor="color-mix(in srgb, var(--foreground) 12%, var(--background))"
             handleColor="var(--background)"
+            handleTextColor="var(--foreground)"
             successColor="#22c55e"
             dangerColor="#e5484d"
           />

@@ -29,6 +29,7 @@ export interface SlideCommitProps {
   onError?: (reason: unknown) => void;
   trackColor?: string;
   handleColor?: string;
+  handleTextColor?: string;
   successColor?: string;
   dangerColor?: string;
   width?: number;
@@ -127,6 +128,7 @@ const SlideCommit: React.FC<SlideCommitProps> = ({
   onError,
   trackColor = "#262626",
   handleColor = "#f5f5f5",
+  handleTextColor = onColor(handleColor),
   successColor = "#22c55e",
   dangerColor = "#e5484d",
   width = 280,
@@ -424,9 +426,9 @@ const SlideCommit: React.FC<SlideCommitProps> = ({
           height,
           "--sc-track": trackColor,
           "--sc-ink": handleColor,
+          "--sc-on-ink": handleTextColor,
           "--sc-ok": successColor,
           "--sc-no": dangerColor,
-          "--sc-on-ink": onColor(handleColor),
           "--sc-on-ok": onColor(successColor),
           "--sc-on-no": onColor(dangerColor),
           "--sc-radius": `${r}px`,
