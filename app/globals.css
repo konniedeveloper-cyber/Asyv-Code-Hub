@@ -63,6 +63,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.project-code-editor {
+  --code-keyword: #7c3aed;
+  --code-string: #15803d;
+  --code-number: #c2410c;
+  --code-comment: #64748b;
+  --code-property: #1d4ed8;
+  --code-attribute: #a16207;
+  --code-tag: #be123c;
+  --code-definition: #0369a1;
+  --code-punctuation: #475569;
+}
+
+.dark .project-code-editor {
+  --code-keyword: #c792ea;
+  --code-string: #a5d6a7;
+  --code-number: #f78c6c;
+  --code-comment: #7f9f9f;
+  --code-property: #82aaff;
+  --code-attribute: #ffcb6b;
+  --code-tag: #f07178;
+  --code-definition: #89ddff;
+  --code-punctuation: #cbd5e1;
+}
+
 .skip-to-content {
   position: absolute;
   left: -9999px;

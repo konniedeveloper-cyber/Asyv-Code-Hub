@@ -3,13 +3,14 @@
 import { readError, readUser } from "@/lib/parse";
 import { LIMITS } from "@/lib/limits";
 import SlideCommit from "@/components/SlideCommit";
+import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 
 type AuthMode = "login" | "register";
 
 const fieldClassName =
-  "focus-ring mt-2 w-full rounded-xl border border-foreground/10 bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-foreground/35 focus:border-foreground/30";
+  "focus-ring mt-2 w-full rounded-xl border border-foreground/25 bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-foreground/45 hover:border-foreground/35 focus:border-ring";
 
 export function AuthForm(): ReactNode {
   const router = useRouter();
@@ -161,6 +162,7 @@ export function AuthForm(): ReactNode {
             }
             doneLabel={mode === "register" ? "Account created" : "Signed in"}
             errorLabel="Please try again"
+            icon={<ArrowRight aria-hidden="true" className="h-5 w-5" />}
             onConfirm={handleConfirm}
             disabled={submitting}
             width={280}

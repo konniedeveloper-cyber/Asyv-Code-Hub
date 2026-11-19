@@ -258,6 +258,12 @@ export function parseProjectDraft(
 
   const coverResult = parseCoverImage(input.coverImage);
   if (!coverResult.ok) return coverResult;
+  if (!coverResult.coverImage) {
+    return {
+      ok: false,
+      error: "Add a project cover image before publishing.",
+    };
+  }
 
   if (kind === "link") {
     const url = parseHttpUrl(readString(input, "url"));

@@ -40,29 +40,32 @@ const CODE_LANGUAGES: Record<CodeLanguage, Extension> = {
 
 const CODE_HIGHLIGHTING = syntaxHighlighting(
   HighlightStyle.define([
-    { tag: tags.keyword, color: "#c792ea" },
-    { tag: tags.string, color: "#a5d6a7" },
-    { tag: tags.number, color: "#f78c6c" },
-    { tag: tags.bool, color: "#f78c6c" },
-    { tag: tags.null, color: "#f78c6c" },
-    { tag: tags.comment, color: "#7f9f9f" },
-    { tag: tags.propertyName, color: "#82aaff" },
-    { tag: tags.attributeName, color: "#ffcb6b" },
-    { tag: tags.attributeValue, color: "#a5d6a7" },
-    { tag: tags.tagName, color: "#f07178" },
-    { tag: tags.function(tags.variableName), color: "#82aaff" },
-    { tag: tags.definition(tags.variableName), color: "#89ddff" },
-    { tag: tags.typeName, color: "#ffcb6b" },
-    { tag: tags.operator, color: "#89ddff" },
-    { tag: tags.punctuation, color: "#cbd5e1" },
-    { tag: tags.meta, color: "#c792ea" },
+    { tag: tags.keyword, color: "var(--code-keyword)" },
+    { tag: tags.string, color: "var(--code-string)" },
+    { tag: tags.number, color: "var(--code-number)" },
+    { tag: tags.bool, color: "var(--code-number)" },
+    { tag: tags.null, color: "var(--code-number)" },
+    { tag: tags.comment, color: "var(--code-comment)" },
+    { tag: tags.propertyName, color: "var(--code-property)" },
+    { tag: tags.attributeName, color: "var(--code-attribute)" },
+    { tag: tags.attributeValue, color: "var(--code-string)" },
+    { tag: tags.tagName, color: "var(--code-tag)" },
+    { tag: tags.function(tags.variableName), color: "var(--code-property)" },
+    {
+      tag: tags.definition(tags.variableName),
+      color: "var(--code-definition)",
+    },
+    { tag: tags.typeName, color: "var(--code-attribute)" },
+    { tag: tags.operator, color: "var(--code-definition)" },
+    { tag: tags.punctuation, color: "var(--code-punctuation)" },
+    { tag: tags.meta, color: "var(--code-keyword)" },
   ])
 );
 
 const CODE_EDITOR_THEME = EditorView.theme({
   "&": {
-    backgroundColor: "#171717",
-    color: "#e5e7eb",
+    backgroundColor: "var(--background)",
+    color: "var(--foreground)",
     fontSize: "13px",
   },
   ".cm-scroller": {
@@ -72,25 +75,25 @@ const CODE_EDITOR_THEME = EditorView.theme({
   ".cm-content": {
     minHeight: "9rem",
     padding: "0.8rem 0",
-    caretColor: "#f8fafc",
+    caretColor: "var(--foreground)",
   },
   ".cm-gutters": {
     backgroundColor: "transparent",
-    color: "#737373",
-    borderRight: "1px solid #303030",
+    color: "var(--muted-foreground)",
+    borderRight: "1px solid var(--border)",
   },
   ".cm-activeLine": {
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    backgroundColor: "color-mix(in srgb, var(--foreground) 5%, transparent)",
   },
   ".cm-activeLineGutter": {
     backgroundColor: "transparent",
-    color: "#e5e7eb",
+    color: "var(--foreground)",
   },
   ".cm-cursor": {
-    borderLeftColor: "#f8fafc",
+    borderLeftColor: "var(--foreground)",
   },
   ".cm-selectionBackground": {
-    backgroundColor: "rgba(96, 165, 250, 0.28)",
+    backgroundColor: "color-mix(in srgb, var(--ring) 28%, transparent)",
   },
   "&.cm-focused": {
     outline: "none",
@@ -176,21 +179,17 @@ export function ProjectSubmitForm({
     if (!projectId) return;
     let active = true;
 
-    fetch(`/api/projects/${encodeURIComponent(projectId)}`, { cache: "no-store" })
+    fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+      cache: "no-store",
+    })
       .then(async (response) => {
         const data: unknown = await response.json();
         if (!active) return;
         if (!response.ok) {
-          setError(
-            readError(data, "Could not load the project for editing.")
-          );
+          setError(readError(data, "Could not load the project for editing."));
           return;
         }
-        if (
-          typeof data !== "object" ||
-          data === null ||
-          !("project" in data)
-        ) {
+        if (typeof data !== "object" || data === null || !("project" in data)) {
           setError("The project returned an unexpected response.");
           return;
         }
@@ -413,6 +412,10 @@ export function ProjectSubmitForm({
     event: FormEvent<HTMLFormElement>
   ): Promise<void> {
     event.preventDefault();
+    if (!coverImage) {
+      setError("Add a project cover image before publishing.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const draft =
@@ -436,18 +439,22 @@ export function ProjectSubmitForm({
 
     try {
       const response = await fetch(
-        projectId ? `/api/projects/${encodeURIComponent(projectId)}` : "/api/projects",
+        projectId
+          ? `/api/projects/${encodeURIComponent(projectId)}`
+          : "/api/projects",
         {
-        method: projectId ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+          method: projectId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(draft),
         }
       );
       const data: unknown = await response.json();
       if (!response.ok) {
         const message = readError(
           data,
-          projectId ? "Could not save your project." : "Could not publish your project."
+          projectId
+            ? "Could not save your project."
+            : "Could not publish your project."
         );
         setError(
           response.status === 401
@@ -476,7 +483,10 @@ export function ProjectSubmitForm({
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       {loadingEdit ? (
-        <p role="status" className="text-foreground/60 rounded-xl border border-foreground/10 p-5 text-sm">
+        <p
+          role="status"
+          className="text-foreground/60 border-foreground/10 rounded-xl border p-5 text-sm"
+        >
           Loading project for editing…
         </p>
       ) : null}
@@ -547,11 +557,11 @@ export function ProjectSubmitForm({
         <div>
           <h2 id="cover-image-heading" className="text-sm font-semibold">
             Project cover image{" "}
-            <span className="text-foreground/45">(optional)</span>
+            <span className="text-foreground/60">(required)</span>
           </h2>
           <p className="text-foreground/55 mt-1 text-xs leading-relaxed">
-            This image appears on the project card instead of the small code
-            preview.
+            Add an image to publish. It appears on the project card instead of
+            the small code preview.
           </p>
         </div>
         <label className="focus-ring border-foreground/10 hover:bg-foreground/5 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-lg border px-3 text-xs font-medium">
@@ -699,7 +709,7 @@ export function ProjectSubmitForm({
                     <Trash2 aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="border-foreground/10 overflow-hidden rounded-xl border bg-[#171717]">
+                <div className="project-code-editor border-foreground/10 bg-background overflow-hidden rounded-xl border">
                   <CodeMirror
                     value={file.content}
                     onChange={(nextValue) =>
@@ -815,7 +825,7 @@ function CodeEditor({
           />
         </label>
       </span>
-      <div className="border-foreground/10 focus-within:ring-ring/40 mt-2 overflow-hidden rounded-xl border bg-[#171717] focus-within:ring-2">
+      <div className="project-code-editor border-foreground/10 focus-within:ring-ring/40 bg-background mt-2 overflow-hidden rounded-xl border focus-within:ring-2">
         <CodeMirror
           value={value}
           onChange={(nextValue) => onChange(nextValue.slice(0, LIMITS.file))}
