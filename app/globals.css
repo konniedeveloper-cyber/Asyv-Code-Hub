@@ -217,3 +217,18 @@ html[data-theme-anim="1"]::view-transition-new(root) {
 .project-card:hover .project-card__image-inner {
   transform: scale(1.06);
 }
+
+.project-preview-container:fullscreen {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--background);
+}
+
+.project-preview-container:fullscreen iframe {
+  min-height: 0;
+  flex: 1;
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ProjectPreview } from "@/components/projects/project-preview";
 
 type ProjectPreviewPageProps = {
   params: Promise<{ id: string }>;
@@ -24,12 +25,7 @@ export default async function ProjectPreviewPage({
             Back to projects
           </Link>
         </div>
-        <iframe
-          title="Project preview"
-          src={`/api/projects/${id}/preview/`}
-          sandbox="allow-scripts"
-          className="border-foreground/10 h-[75vh] min-h-120 w-full rounded-2xl border bg-white"
-        />
+        <ProjectPreview projectId={id} />
       </section>
     </main>
   );
