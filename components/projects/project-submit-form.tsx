@@ -15,6 +15,7 @@ import { Code2, ExternalLink, Link2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -152,7 +153,11 @@ async function compressCoverImage(file: File): Promise<string> {
   );
 }
 
-export function ProjectSubmitForm(): ReactNode {
+export function ProjectSubmitForm({
+  projectId = null,
+}: {
+  projectId?: string | null;
+}): ReactNode {
   const router = useRouter();
   const [kind, setKind] = useState<ProjectKind>("files");
   const [title, setTitle] = useState("");
@@ -165,6 +170,123 @@ export function ProjectSubmitForm(): ReactNode {
   const [additionalFiles, setAdditionalFiles] = useState<AdditionalFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(projectId !== null);
+
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+
+    fetch(`/api/projects/${encodeURIComponent(projectId)}`, { cache: "no-store" })
+      .then(async (response) => {
+        const data: unknown = await response.json();
+        if (!active) return;
+        if (!response.ok) {
+          setError(
+            readError(data, "Could not load the project for editing.")
+          );
+          return;
+        }
+        if (
+          typeof data !== "object" ||
+          data === null ||
+          !("project" in data)
+        ) {
+          setError("The project returned an unexpected response.");
+          return;
+        }
+        const project = data.project;
+        if (
+          typeof project !== "object" ||
+          project === null ||
+          !("kind" in project) ||
+          !("title" in project) ||
+          !("description" in project) ||
+          !("coverImage" in project)
+        ) {
+          setError("The project returned an unexpected response.");
+          return;
+        }
+
+        setKind(project.kind === "link" ? "link" : "files");
+        setTitle(typeof project.title === "string" ? project.title : "");
+        setDescription(
+          typeof project.description === "string" ? project.description : ""
+        );
+        setCoverImage(
+          typeof project.coverImage === "string" ? project.coverImage : null
+        );
+
+        if (
+          project.kind === "link" &&
+          "url" in project &&
+          typeof project.url === "string"
+        ) {
+          setUrl(project.url);
+        } else if (project.kind === "files" && "files" in project) {
+          const files = Array.isArray(project.files) ? project.files : [];
+          const readFile = (name: string) =>
+            files.find(
+              (file) =>
+                typeof file === "object" &&
+                file !== null &&
+                "name" in file &&
+                typeof file.name === "string" &&
+                file.name.toLowerCase() === name &&
+                "content" in file &&
+                typeof file.content === "string"
+            );
+          const index = readFile("index.html");
+          const style = readFile("style.css");
+          const script = readFile("script.js");
+          setHtml(
+            index && "content" in index && typeof index.content === "string"
+              ? index.content
+              : ""
+          );
+          setCss(
+            style && "content" in style && typeof style.content === "string"
+              ? style.content
+              : ""
+          );
+          setJs(
+            script && "content" in script && typeof script.content === "string"
+              ? script.content
+              : ""
+          );
+          setAdditionalFiles(
+            files
+              .filter(
+                (file) =>
+                  typeof file === "object" &&
+                  file !== null &&
+                  "name" in file &&
+                  typeof file.name === "string" &&
+                  !["index.html", "style.css", "script.js"].includes(
+                    file.name.toLowerCase()
+                  ) &&
+                  "content" in file &&
+                  typeof file.content === "string"
+              )
+              .map((file) => ({
+                id: crypto.randomUUID(),
+                name: file.name as string,
+                content: file.content as string,
+              }))
+          );
+        }
+        setError(null);
+      })
+      .catch(() => {
+        if (active) setError("Could not load the project for editing.");
+      })
+      .finally(() => {
+        if (active) setLoadingEdit(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   async function loadCoverImage(
     event: ChangeEvent<HTMLInputElement>
@@ -313,14 +435,20 @@ export function ProjectSubmitForm(): ReactNode {
           };
 
     try {
-      const response = await fetch("/api/projects", {
-        method: "POST",
+      const response = await fetch(
+        projectId ? `/api/projects/${encodeURIComponent(projectId)}` : "/api/projects",
+        {
+        method: projectId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
-      });
+        }
+      );
       const data: unknown = await response.json();
       if (!response.ok) {
-        const message = readError(data, "Could not publish your project.");
+        const message = readError(
+          data,
+          projectId ? "Could not save your project." : "Could not publish your project."
+        );
         setError(
           response.status === 401
             ? "Sign in before publishing a project."
@@ -347,6 +475,11 @@ export function ProjectSubmitForm(): ReactNode {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
+      {loadingEdit ? (
+        <p role="status" className="text-foreground/60 rounded-xl border border-foreground/10 p-5 text-sm">
+          Loading project for editing…
+        </p>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">
           Project title
@@ -633,10 +766,16 @@ export function ProjectSubmitForm(): ReactNode {
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || loadingEdit}
         className="focus-ring bg-foreground text-background inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-sm font-semibold transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50 sm:justify-self-start"
       >
-        {submitting ? "Publishing…" : "Publish project"}
+        {submitting
+          ? projectId
+            ? "Saving…"
+            : "Publishing…"
+          : projectId
+            ? "Save changes"
+            : "Publish project"}
       </button>
     </form>
   );

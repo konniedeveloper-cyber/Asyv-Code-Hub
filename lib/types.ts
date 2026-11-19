@@ -67,6 +67,10 @@ export type ProjectDraft =
       coverImage: string | null;
     };
 
+export type EditableProject = ProjectDraft & {
+  id: string;
+};
+
 export type Credentials =
   | {
       mode: "login";

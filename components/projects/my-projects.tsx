@@ -2,7 +2,7 @@
 
 import type { ProjectManagementItem, ProjectStatus } from "@/lib/types";
 import { isRecord, readError } from "@/lib/parse";
-import { ExternalLink, RotateCw, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
@@ -199,6 +199,13 @@ export function MyProjects(): ReactNode {
                 ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/submit?edit=${encodeURIComponent(project.id)}`}
+                  className="focus-ring hover:bg-foreground/5 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  <Pencil aria-hidden="true" className="h-4 w-4" />
+                  Edit
+                </Link>
                 {project.kind === "files" ? (
                   <Link
                     href={`/projects/${project.id}/preview`}

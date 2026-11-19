@@ -5,6 +5,7 @@ import type {
   ProjectCard,
   ProjectDetail,
   ProjectDraft,
+  EditableProject,
   ProjectManagementItem,
   ProjectSourceFile,
   PublicUser,
@@ -247,6 +248,108 @@ export async function createProject(
 
   await db.collection<ProjectDoc>(PROJECTS).insertOne(doc);
   return toDetail(doc, 0, false);
+}
+
+export async function getEditableProject(
+  id: string,
+  actor: Pick<PublicUser, "id" | "role">
+): Promise<EditableProject | null> {
+  const projectId = toObjectId(id);
+  const actorId = toObjectId(actor.id);
+  if (!projectId || !actorId) return null;
+
+  const filter =
+    actor.role === "admin"
+      ? { _id: projectId }
+      : { _id: projectId, authorId: actorId };
+  const doc = await getDb()
+    .then((db) =>
+      db.collection<ProjectDoc>(PROJECTS).findOne(filter)
+    );
+  if (!doc) return null;
+
+  if (doc.kind === "link") {
+    return {
+      id: doc._id.toHexString(),
+      kind: "link",
+      title: doc.title,
+      description: doc.description,
+      url: doc.url ?? "",
+      coverImage: doc.coverImage ?? null,
+    };
+  }
+
+  const files =
+    doc.files?.length
+      ? doc.files
+      : [
+          { name: "index.html", content: doc.html ?? "" },
+          { name: "style.css", content: doc.css ?? "" },
+          { name: "script.js", content: doc.js ?? "" },
+        ];
+  return {
+    id: doc._id.toHexString(),
+    kind: "files",
+    title: doc.title,
+    description: doc.description,
+    files,
+    coverImage: doc.coverImage ?? null,
+  };
+}
+
+export async function updateProject(
+  id: string,
+  actor: Pick<PublicUser, "id" | "role">,
+  draft: ProjectDraft
+): Promise<ProjectDetail | null> {
+  const projectId = toObjectId(id);
+  const actorId = toObjectId(actor.id);
+  if (!projectId || !actorId) return null;
+
+  const filter =
+    actor.role === "admin"
+      ? { _id: projectId }
+      : { _id: projectId, authorId: actorId };
+  const update =
+    draft.kind === "link"
+      ? {
+          title: draft.title,
+          description: draft.description,
+          kind: "link" as const,
+          url: draft.url,
+          coverImage: draft.coverImage,
+          files: null,
+          html: null,
+          css: null,
+          js: null,
+          status: "pending" as const,
+          reviewReason: null,
+          reviewedAt: null,
+          reviewedBy: null,
+        }
+      : {
+          title: draft.title,
+          description: draft.description,
+          kind: "files" as const,
+          url: null,
+          coverImage: draft.coverImage,
+          files: draft.files,
+          html: draft.files.find((file) => file.name.toLowerCase() === "index.html")?.content ?? "",
+          css: draft.files.find((file) => file.name.toLowerCase() === "style.css")?.content ?? "",
+          js: draft.files.find((file) => file.name.toLowerCase() === "script.js")?.content ?? "",
+          status: "pending" as const,
+          reviewReason: null,
+          reviewedAt: null,
+          reviewedBy: null,
+        };
+
+  const db = await getDb();
+  const result = await db
+    .collection<ProjectDoc>(PROJECTS)
+    .findOneAndUpdate(filter, { $set: update }, { returnDocument: "after" });
+  if (!result) return null;
+
+  return toDetail(result, 0, false);
 }
 
 export async function getProjectFiles(
