@@ -52,8 +52,11 @@ export default function HomePage(): ReactNode {
               warpStrength={0.08}
               warpScale={1.7}
               speed={0.4}
+              refraction={0.006}
+              chromatic={0}
+              ripple={false}
+              idleDrift={0}
               pointerStrength={0.35}
-              intro
               className="text-foreground !min-h-0"
               style={{ height: "100%", minHeight: 0 }}
             />

@@ -77,27 +77,37 @@ html.dark {
 .top-notch__brand {
   position: absolute;
   z-index: 2;
-  top: 34px;
+  top: 26px;
   left: 50%;
   display: flex;
   transform: translateX(-50%);
   align-items: center;
   gap: 6px;
   color: var(--foreground);
+  pointer-events: auto;
 }
 
 .top-notch__power {
   width: 20px;
   height: 20px;
+  flex: none;
   stroke-width: 3;
-  color: var(--foreground);
 }
 
-.top-notch__label {
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
+.top-notch__fuzzy-slot {
+  position: relative;
+  width: 90px;
+  height: 36px;
+  flex: none;
+}
+
+.top-notch__fuzzy {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  transform: translate(-50%, -50%);
+  color: var(--foreground);
 }
 
 .top-controls {

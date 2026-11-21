@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import FuzzyText from "@/components/FuzzyText";
 import { Power, Search, UserRound } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -111,13 +112,28 @@ export function TopNotch(): ReactNode {
         >
           <path d="M0 0H320C296 0 302 24 278 24C260 24 248 31 236 46C228 56 218 64 198 64H122C102 64 92 56 84 46C72 31 60 24 42 24C18 24 24 0 0 0Z" />
         </svg>
-        <div className="top-notch__brand" aria-label="Asyv Code Hub">
+        <div className="top-notch__brand">
           <Power
             aria-hidden="true"
             strokeWidth={3}
             className="top-notch__power"
           />
-          <span className="top-notch__label">Web On</span>
+          <div className="top-notch__fuzzy-slot">
+            <FuzzyText
+              className="top-notch__fuzzy"
+              fontSize="24px"
+              fontWeight={600}
+              color="currentColor"
+              baseIntensity={0.05}
+              hoverIntensity={0.5}
+              fuzzRange={30}
+              direction="horizontal"
+              trigger="hover"
+              colorSplit={0}
+            >
+              Web On
+            </FuzzyText>
+          </div>
         </div>
       </div>
 
