@@ -82,6 +82,7 @@ html.dark {
   display: flex;
   transform: translateX(-50%);
   align-items: center;
+  gap: 6px;
   color: var(--foreground);
 }
 
@@ -90,6 +91,13 @@ html.dark {
   height: 20px;
   stroke-width: 3;
   color: var(--foreground);
+}
+
+.top-notch__label {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .top-controls {

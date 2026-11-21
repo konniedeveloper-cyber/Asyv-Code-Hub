@@ -117,6 +117,7 @@ export function TopNotch(): ReactNode {
             strokeWidth={3}
             className="top-notch__power"
           />
+          <span className="top-notch__label">Web On</span>
         </div>
       </div>
 
