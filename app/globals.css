@@ -46,6 +46,384 @@ html.dark {
   color-scheme: dark;
 }
 
+.top-notch {
+  position: absolute;
+  z-index: 49;
+  top: -14px;
+  left: 50%;
+  width: 320px;
+  height: 72px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.top-notch__shape {
+  position: absolute;
+  inset: 0;
+  width: 320px;
+  height: 72px;
+  overflow: visible;
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.08));
+}
+
+.top-notch__shape path {
+  fill: var(--background);
+  stroke: color-mix(in srgb, var(--foreground) 24%, transparent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.top-notch__brand {
+  position: absolute;
+  z-index: 2;
+  top: 34px;
+  left: 50%;
+  display: flex;
+  transform: translateX(-50%);
+  align-items: center;
+  color: var(--foreground);
+}
+
+.top-notch__power {
+  width: 20px;
+  height: 20px;
+  stroke-width: 3;
+  color: var(--foreground);
+}
+
+.top-controls {
+  position: absolute;
+  z-index: 50;
+  top: 12px;
+  right: clamp(12px, 2vw, 32px);
+  left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-search {
+  display: flex;
+  height: 44px;
+  width: 220px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 7%, var(--background));
+  padding: 0 7px 0 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.top-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.top-search input::placeholder {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.top-search button {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: var(--foreground);
+  color: var(--background);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.top-search button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.top-avatar {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 7%, var(--background));
+  color: var(--foreground);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.top-avatar svg {
+  width: 20px;
+  height: 20px;
+}
+
+.top-avatar img {
+  object-fit: cover;
+}
+
+.top-search-popover {
+  position: absolute;
+  top: 52px;
+  right: 52px;
+  width: 280px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  background: #fff;
+  padding: 6px;
+  color: #111;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.top-search-popover button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.top-search-popover button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.top-search-popover strong,
+.top-search-popover span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-search-popover strong {
+  font-size: 13px;
+}
+
+.top-search-popover span,
+.top-search-popover p {
+  margin-top: 2px;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
+.header-notch {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 72px;
+  pointer-events: none;
+  border-radius: 24px 24px 16px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-bottom: 0;
+  background: rgba(23, 23, 23, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 10px 30px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+
+.header-notch button,
+.header-notch form,
+.header-notch input,
+.header-notch div {
+  pointer-events: auto;
+}
+
+.header-notch__center {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  height: 54px;
+  min-width: 220px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  background: #171717;
+  border: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0 0 32px 32px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
+}
+
+.header-notch__center::before,
+.header-notch__center::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.header-notch__center::before {
+  left: -32px;
+  border-top-right-radius: 32px;
+  box-shadow: 16px -16px 0 16px #171717;
+}
+
+.header-notch__center::after {
+  right: -32px;
+  border-top-left-radius: 32px;
+  box-shadow: -16px -16px 0 16px #171717;
+}
+
+.header-notch__logo {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 12px;
+}
+
+.header-notch__right {
+  position: absolute;
+  z-index: 3;
+  top: 14px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-notch__search {
+  display: flex;
+  height: 44px;
+  width: 208px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--foreground) 12%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 7%, var(--background));
+  padding: 0 7px 0 14px;
+}
+
+.header-notch__search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 14px;
+}
+
+.header-notch__search input::placeholder {
+  color: color-mix(in srgb, var(--foreground) 45%, transparent);
+}
+
+.header-notch__search button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--foreground);
+}
+
+.header-notch__search button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.header-notch__avatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--foreground) 14%, transparent);
+  border-radius: 999px;
+  background: var(--foreground);
+  color: var(--background);
+  font-weight: 700;
+}
+
+.header-notch__avatar img {
+  object-fit: cover;
+}
+
+.header-notch__avatar span {
+  display: grid;
+  height: 100%;
+  place-items: center;
+}
+
+.header-notch__popover {
+  position: absolute;
+  top: 52px;
+  right: 52px;
+  width: 280px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  background: #fff;
+  padding: 6px;
+  color: #111;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.header-notch__popover button {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.header-notch__popover button:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.header-notch__popover strong,
+.header-notch__popover span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-notch__popover strong {
+  font-size: 13px;
+}
+
+.header-notch__popover span,
+.header-notch__popover p {
+  margin-top: 2px;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -61,6 +439,65 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.portal-nav {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(23, 23, 23, 0.96) 50%,
+    rgba(255, 255, 255, 0.07)
+  );
+  border-top-color: rgba(255, 255, 255, 0.28);
+}
+
+.portal-glass-pill {
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 5px 18px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(18px) saturate(1.35);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.portal-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.portal-notch {
+  background: #171717;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 24px rgba(0, 0, 0, 0.16);
+  color: #fff;
+}
+
+.portal-notch::before,
+.portal-notch::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.portal-notch::before {
+  left: -34px;
+  border-top-right-radius: 34px;
+  box-shadow: 16px -16px 0 16px #171717;
+}
+
+.portal-notch::after {
+  right: -34px;
+  border-top-left-radius: 34px;
+  box-shadow: -16px -16px 0 16px #171717;
 }
 
 .project-code-editor {

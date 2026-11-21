@@ -22,14 +22,6 @@ export default function SettingsPage(): ReactNode {
         Settings
       </h1>
       <AccountSettings />
-      <section className="border-foreground/10 mt-5 rounded-2xl border p-5 sm:p-6">
-        <h2 className="text-lg font-semibold">Profile picture</h2>
-        <p className="text-foreground/65 mt-2 max-w-2xl text-sm leading-relaxed">
-          Add a profile picture to help classmates recognize your projects.
-          Profile photo updates are not available yet. The red dot on Settings
-          is a reminder to come back and add one when they are.
-        </p>
-      </section>
     </main>
   );
 }

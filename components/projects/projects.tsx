@@ -2,7 +2,7 @@
 
 import { Code2, ExternalLink, Link2, RotateCw } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import PulseHeart from "@/components/PulseHeart";
 import type { ProjectCard } from "@/lib/types";
@@ -12,6 +12,8 @@ export type ProjectsProps = {
   withHeadline?: boolean;
   viewMoreVisible?: boolean;
 };
+
+type ProjectSort = "newest" | "popular";
 
 function isProjectCard(value: unknown): value is ProjectCard {
   return (
@@ -47,6 +49,20 @@ export function Projects({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [sort, setSort] = useState<ProjectSort>("newest");
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    function syncQuery(): void {
+      setQuery(
+        new URLSearchParams(window.location.search).get("q")?.trim() ?? ""
+      );
+    }
+
+    syncQuery();
+    window.addEventListener("popstate", syncQuery);
+    return () => window.removeEventListener("popstate", syncQuery);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -90,13 +106,51 @@ export function Projects({
     setReloadKey((key) => key + 1);
   }
 
-  const visibleProjects = viewMoreVisible ? projects.slice(0, 6) : projects;
+  const sortedProjects = useMemo(() => {
+    const normalizedQuery = query.toLowerCase();
+    const matchingProjects = normalizedQuery
+      ? projects.filter((project) =>
+          [project.title, project.description, project.authorName, project.kind]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedQuery)
+        )
+      : projects;
+
+    return [...matchingProjects].sort((left, right) => {
+      if (sort === "popular") {
+        const popularityDifference = right.likeCount - left.likeCount;
+        if (popularityDifference !== 0) return popularityDifference;
+      }
+      return (
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      );
+    });
+  }, [projects, query, sort]);
+
+  const visibleProjects = viewMoreVisible
+    ? sortedProjects.slice(0, 6)
+    : sortedProjects;
+
+  function updateProjectLike(
+    projectId: string,
+    likedByMe: boolean,
+    likeCount: number
+  ): void {
+    setProjects((current) =>
+      current.map((project) =>
+        project.id === projectId
+          ? { ...project, likedByMe, likeCount }
+          : project
+      )
+    );
+  }
 
   return (
     <section className="relative w-full">
       <div className="mx-auto w-full max-w-275 px-6 sm:px-10">
         {withHeadline ? (
-          <div className="mb-8 flex items-end justify-between gap-5">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                 Community projects
@@ -113,6 +167,44 @@ export function Projects({
                 Explore all
               </Link>
             ) : null}
+          </div>
+        ) : null}
+
+        {!loading && !error && projects.length > 0 ? (
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <p className="text-foreground/50 text-xs font-medium tracking-[0.12em] uppercase">
+              Sort projects
+            </p>
+            <div
+              role="group"
+              aria-label="Sort projects"
+              className="border-foreground/10 bg-background flex rounded-xl border p-1"
+            >
+              <button
+                type="button"
+                aria-pressed={sort === "newest"}
+                onClick={() => setSort("newest")}
+                className={`focus-ring rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  sort === "newest"
+                    ? "bg-foreground text-background"
+                    : "text-foreground/65 hover:bg-foreground/5"
+                }`}
+              >
+                Newest
+              </button>
+              <button
+                type="button"
+                aria-pressed={sort === "popular"}
+                onClick={() => setSort("popular")}
+                className={`focus-ring rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  sort === "popular"
+                    ? "bg-foreground text-background"
+                    : "text-foreground/65 hover:bg-foreground/5"
+                }`}
+              >
+                Popular
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -151,7 +243,11 @@ export function Projects({
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {visibleProjects.map((project) => (
-              <ProjectCardView key={project.id} project={project} />
+              <ProjectCardView
+                key={project.id}
+                project={project}
+                onLikeChange={updateProjectLike}
+              />
             ))}
           </div>
         )}
@@ -160,7 +256,17 @@ export function Projects({
   );
 }
 
-function ProjectCardView({ project }: { project: ProjectCard }): ReactNode {
+function ProjectCardView({
+  project,
+  onLikeChange,
+}: {
+  project: ProjectCard;
+  onLikeChange: (
+    projectId: string,
+    likedByMe: boolean,
+    likeCount: number
+  ) => void;
+}): ReactNode {
   const [liked, setLiked] = useState(project.likedByMe);
   const [likeCount, setLikeCount] = useState(project.likeCount);
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +309,7 @@ function ProjectCardView({ project }: { project: ProjectCard }): ReactNode {
       }
       setLiked(result.liked);
       setLikeCount(result.likeCount);
+      onLikeChange(project.id, result.liked, result.likeCount);
     } catch {
       setError("Could not update your like. Try again.");
       setLiked(previousLiked);

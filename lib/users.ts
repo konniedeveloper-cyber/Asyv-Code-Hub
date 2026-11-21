@@ -15,6 +15,7 @@ type UserDoc = {
   passwordHash: string;
   createdAt: Date;
   role?: UserRole;
+  profileImage?: string | null;
 };
 
 function toPublic(user: UserDoc): PublicUser {
@@ -23,6 +24,7 @@ function toPublic(user: UserDoc): PublicUser {
     name: user.name,
     email: user.email,
     role: user.role === "admin" ? "admin" : "student",
+    profileImage: user.profileImage ?? null,
   };
 }
 
@@ -54,6 +56,7 @@ export async function registerUser(input: {
       name: input.name,
       email: input.email,
       role: "student",
+      profileImage: null,
     };
   } catch (error) {
     if (isDuplicateKey(error)) {
@@ -85,6 +88,24 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
   const db = await getDb();
   const user = await db.collection<UserDoc>(USERS).findOne({ _id: objectId });
   return user ? toPublic(user) : null;
+}
+
+export async function updateProfileImage(
+  userId: string,
+  profileImage: string | null
+): Promise<PublicUser | null> {
+  const objectId = toObjectId(userId);
+  if (!objectId) return null;
+
+  const db = await getDb();
+  const result = await db
+    .collection<UserDoc>(USERS)
+    .findOneAndUpdate(
+      { _id: objectId },
+      { $set: { profileImage } },
+      { returnDocument: "after" }
+    );
+  return result ? toPublic(result) : null;
 }
 
 export async function listStudents(): Promise<AdminStudent[]> {

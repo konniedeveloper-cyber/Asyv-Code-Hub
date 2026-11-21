@@ -24,7 +24,10 @@ export function readUser(data: unknown): PublicUser | null {
     typeof user.id !== "string" ||
     typeof user.name !== "string" ||
     typeof user.email !== "string" ||
-    (user.role !== "student" && user.role !== "admin")
+    (user.role !== "student" && user.role !== "admin") ||
+    (user.profileImage !== undefined &&
+      user.profileImage !== null &&
+      typeof user.profileImage !== "string")
   ) {
     return null;
   }
@@ -33,6 +36,8 @@ export function readUser(data: unknown): PublicUser | null {
     name: user.name,
     email: user.email,
     role: user.role,
+    profileImage:
+      typeof user.profileImage === "string" ? user.profileImage : null,
   };
 }
 

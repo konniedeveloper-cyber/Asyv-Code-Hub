@@ -7,6 +7,7 @@ export type PublicUser = {
   name: string;
   email: string;
   role: UserRole;
+  profileImage: string | null;
 };
 
 export type ProjectCard = {

@@ -1,6 +1,7 @@
 import { Projects } from "@/components/projects/projects";
 import ParticleText from "@/components/ParticleText";
 import WarpText from "@/components/WarpText";
+import { TopNotch } from "@/components/layout/top-notch";
 import { createMetadata, siteConfig } from "@/lib/metadata";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -17,7 +18,8 @@ export default function HomePage(): ReactNode {
       id="main-content"
       className="flex flex-1 flex-col gap-10 pb-24 sm:gap-14"
     >
-      <section className="mx-auto w-full max-w-275 px-6 pt-28 sm:px-10 sm:pt-36">
+      <section className="relative mx-auto w-full max-w-275 px-6 pt-28 sm:px-10 sm:pt-36">
+        <TopNotch />
         <div className="w-full">
           <ParticleText
             text="ASYV CODE HUB"
