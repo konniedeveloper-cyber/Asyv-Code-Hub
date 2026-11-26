@@ -1,9 +1,12 @@
 import { LIMITS } from "@/lib/limits";
+import { STUDENT_FAMILIES, STUDENT_GRADES } from "@/lib/types";
 import type {
   Credentials,
   ProjectDraft,
   ProjectSourceFile,
   PublicUser,
+  StudentFamily,
+  StudentGrade,
 } from "@/lib/types";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -27,7 +30,13 @@ export function readUser(data: unknown): PublicUser | null {
     (user.role !== "student" && user.role !== "admin") ||
     (user.profileImage !== undefined &&
       user.profileImage !== null &&
-      typeof user.profileImage !== "string")
+      typeof user.profileImage !== "string") ||
+    (user.family !== undefined &&
+      user.family !== null &&
+      !isStudentFamily(user.family)) ||
+    (user.grade !== undefined &&
+      user.grade !== null &&
+      !isStudentGrade(user.grade))
   ) {
     return null;
   }
@@ -38,7 +47,23 @@ export function readUser(data: unknown): PublicUser | null {
     role: user.role,
     profileImage:
       typeof user.profileImage === "string" ? user.profileImage : null,
+    family: isStudentFamily(user.family) ? user.family : null,
+    grade: isStudentGrade(user.grade) ? user.grade : null,
   };
+}
+
+export function isStudentFamily(value: unknown): value is StudentFamily {
+  return (
+    typeof value === "string" &&
+    (STUDENT_FAMILIES as readonly string[]).includes(value)
+  );
+}
+
+export function isStudentGrade(value: unknown): value is StudentGrade {
+  return (
+    typeof value === "string" &&
+    (STUDENT_GRADES as readonly string[]).includes(value)
+  );
 }
 
 export function readProjectId(data: unknown): string | null {
@@ -78,6 +103,34 @@ export function parseHttpUrl(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+function parseGitHubUrl(
+  value: string
+): { ok: true; url: string | null } | { ok: false; error: string } {
+  if (!value) return { ok: true, url: null };
+  const parsed = parseHttpUrl(value);
+  if (!parsed) {
+    return {
+      ok: false,
+      error: "Enter a valid public GitHub repository URL.",
+    };
+  }
+  const url = new URL(parsed);
+  if (
+    url.protocol !== "https:" ||
+    !["github.com", "www.github.com", "gist.github.com"].includes(
+      url.hostname
+    ) ||
+    url.pathname.split("/").filter(Boolean).length < 2
+  ) {
+    return {
+      ok: false,
+      error:
+        "Use a public GitHub repository URL starting with https://github.com/.",
+    };
+  }
+  return { ok: true, url: parsed };
 }
 
 function parseProjectFiles(
@@ -233,7 +286,29 @@ export function parseCredentials(
     };
   }
 
-  return { ok: true, value: { mode: "register", name, email, password } };
+  const family =
+    input.family === undefined || input.family === null || input.family === ""
+      ? null
+      : isStudentFamily(input.family)
+        ? input.family
+        : undefined;
+  const grade =
+    input.grade === undefined || input.grade === null || input.grade === ""
+      ? null
+      : isStudentGrade(input.grade)
+        ? input.grade
+        : undefined;
+  if (family === undefined) {
+    return { ok: false, error: "Choose one of the listed student families." };
+  }
+  if (grade === undefined) {
+    return { ok: false, error: "Choose one of the listed school grades." };
+  }
+
+  return {
+    ok: true,
+    value: { mode: "register", name, email, password, family, grade },
+  };
 }
 
 export function parseProjectDraft(
@@ -245,6 +320,7 @@ export function parseProjectDraft(
 
   const title = readString(input, "title");
   const description = readString(input, "description");
+  const language = readString(input, "language");
   const kind = input.kind;
 
   if (title.length < 2 || title.length > LIMITS.title) {
@@ -260,6 +336,16 @@ export function parseProjectDraft(
       error: `Description must be 2 to ${LIMITS.description} characters.`,
     };
   }
+
+  if (language.length < 2 || language.length > 80) {
+    return {
+      ok: false,
+      error: "Programming language must be 2 to 80 characters.",
+    };
+  }
+
+  const githubResult = parseGitHubUrl(readString(input, "githubUrl"));
+  if (!githubResult.ok) return githubResult;
 
   const coverResult = parseCoverImage(input.coverImage);
   if (!coverResult.ok) return coverResult;
@@ -284,6 +370,8 @@ export function parseProjectDraft(
         kind: "link",
         title,
         description,
+        language,
+        githubUrl: githubResult.url,
         url,
         coverImage: coverResult.coverImage,
       },
@@ -300,6 +388,8 @@ export function parseProjectDraft(
         kind: "files",
         title,
         description,
+        language,
+        githubUrl: githubResult.url,
         files: result.files,
         coverImage: coverResult.coverImage,
       },

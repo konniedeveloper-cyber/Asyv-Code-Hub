@@ -4,7 +4,13 @@ import { compare, hash } from "bcryptjs";
 import { AuthError } from "@/lib/errors";
 import { getDb, isDuplicateKey } from "@/lib/mongodb";
 import { getSessionUserId } from "@/lib/session";
-import type { AdminStudent, PublicUser, UserRole } from "@/lib/types";
+import type {
+  AdminStudent,
+  PublicUser,
+  StudentFamily,
+  StudentGrade,
+  UserRole,
+} from "@/lib/types";
 
 const USERS = "users";
 
@@ -16,6 +22,8 @@ type UserDoc = {
   createdAt: Date;
   role?: UserRole;
   profileImage?: string | null;
+  family?: StudentFamily | null;
+  grade?: StudentGrade | null;
 };
 
 function toPublic(user: UserDoc): PublicUser {
@@ -25,6 +33,8 @@ function toPublic(user: UserDoc): PublicUser {
     email: user.email,
     role: user.role === "admin" ? "admin" : "student",
     profileImage: user.profileImage ?? null,
+    family: user.family ?? null,
+    grade: user.grade ?? null,
   };
 }
 
@@ -37,6 +47,8 @@ export async function registerUser(input: {
   name: string;
   email: string;
   password: string;
+  family: StudentFamily | null;
+  grade: StudentGrade | null;
 }): Promise<PublicUser> {
   const db = await getDb();
   const passwordHash = await hash(input.password, 12);
@@ -49,6 +61,8 @@ export async function registerUser(input: {
       passwordHash,
       createdAt: new Date(),
       role: "student",
+      family: input.family,
+      grade: input.grade,
     });
 
     return {
@@ -57,6 +71,8 @@ export async function registerUser(input: {
       email: input.email,
       role: "student",
       profileImage: null,
+      family: input.family,
+      grade: input.grade,
     };
   } catch (error) {
     if (isDuplicateKey(error)) {
@@ -90,9 +106,13 @@ export async function getCurrentUser(): Promise<PublicUser | null> {
   return user ? toPublic(user) : null;
 }
 
-export async function updateProfileImage(
+export async function updateUserProfile(
   userId: string,
-  profileImage: string | null
+  update: {
+    profileImage?: string | null;
+    family?: StudentFamily | null;
+    grade?: StudentGrade | null;
+  }
 ): Promise<PublicUser | null> {
   const objectId = toObjectId(userId);
   if (!objectId) return null;
@@ -102,7 +122,7 @@ export async function updateProfileImage(
     .collection<UserDoc>(USERS)
     .findOneAndUpdate(
       { _id: objectId },
-      { $set: { profileImage } },
+      { $set: update },
       { returnDocument: "after" }
     );
   return result ? toPublic(result) : null;

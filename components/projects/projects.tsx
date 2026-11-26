@@ -1,10 +1,11 @@
 "use client";
 
-import { Code2, ExternalLink, Link2, RotateCw } from "lucide-react";
+import { Code2, ExternalLink, Github, Link2, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import PulseHeart from "@/components/PulseHeart";
+import { Skeleton } from "@/components/ui/loading";
 import type { ProjectCard } from "@/lib/types";
 import { isRecord, readError, readLikeResult } from "@/lib/parse";
 
@@ -14,6 +15,13 @@ export type ProjectsProps = {
 };
 
 type ProjectSort = "newest" | "popular";
+
+function getProjectLanguages(value: string): string[] {
+  return value
+    .split(/[,;]+/)
+    .map((language) => language.trim())
+    .filter(Boolean);
+}
 
 function isProjectCard(value: unknown): value is ProjectCard {
   return (
@@ -25,6 +33,10 @@ function isProjectCard(value: unknown): value is ProjectCard {
     (value.url === null || typeof value.url === "string") &&
     (value.coverImage === null || typeof value.coverImage === "string") &&
     typeof value.authorName === "string" &&
+    (value.authorFamily === null || typeof value.authorFamily === "string") &&
+    (value.authorGrade === null || typeof value.authorGrade === "string") &&
+    typeof value.language === "string" &&
+    (value.githubUrl === null || typeof value.githubUrl === "string") &&
     typeof value.likeCount === "number" &&
     typeof value.likedByMe === "boolean" &&
     typeof value.createdAt === "string"
@@ -51,6 +63,7 @@ export function Projects({
   const [reloadKey, setReloadKey] = useState(0);
   const [sort, setSort] = useState<ProjectSort>("newest");
   const [query, setQuery] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("all");
 
   useEffect(() => {
     function syncQuery(): void {
@@ -106,16 +119,40 @@ export function Projects({
     setReloadKey((key) => key + 1);
   }
 
+  const availableLanguages = useMemo(
+    () =>
+      [
+        ...new Set(
+          projects.flatMap((project) => getProjectLanguages(project.language))
+        ),
+      ].sort((left, right) => left.localeCompare(right)),
+    [projects]
+  );
+
   const sortedProjects = useMemo(() => {
     const normalizedQuery = query.toLowerCase();
-    const matchingProjects = normalizedQuery
-      ? projects.filter((project) =>
-          [project.title, project.description, project.authorName, project.kind]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedQuery)
-        )
-      : projects;
+    const matchingProjects = projects.filter((project) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        [
+          project.title,
+          project.description,
+          project.authorName,
+          project.authorFamily ?? "",
+          project.authorGrade ?? "",
+          project.language,
+          project.kind,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      const matchesLanguage =
+        languageFilter === "all" ||
+        getProjectLanguages(project.language).some(
+          (language) => language.toLowerCase() === languageFilter.toLowerCase()
+        );
+      return matchesQuery && matchesLanguage;
+    });
 
     return [...matchingProjects].sort((left, right) => {
       if (sort === "popular") {
@@ -126,7 +163,7 @@ export function Projects({
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
       );
     });
-  }, [projects, query, sort]);
+  }, [projects, query, sort, languageFilter]);
 
   const visibleProjects = viewMoreVisible
     ? sortedProjects.slice(0, 6)
@@ -171,10 +208,23 @@ export function Projects({
         ) : null}
 
         {!loading && !error && projects.length > 0 ? (
-          <div className="mb-5 flex items-center justify-between gap-3">
-            <p className="text-foreground/50 text-xs font-medium tracking-[0.12em] uppercase">
-              Sort projects
-            </p>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <label className="text-foreground/50 flex items-center gap-2 text-xs font-medium tracking-[0.12em] uppercase">
+              Language
+              <select
+                value={languageFilter}
+                onChange={(event) => setLanguageFilter(event.target.value)}
+                aria-label="Filter projects by programming language"
+                className="border-foreground/10 bg-background text-foreground focus-ring rounded-lg border px-3 py-2 text-sm tracking-normal normal-case"
+              >
+                <option value="all">All languages</option>
+                {availableLanguages.map((language) => (
+                  <option key={language} value={language}>
+                    {language}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div
               role="group"
               aria-label="Sort projects"
@@ -224,21 +274,68 @@ export function Projects({
             </button>
           </div>
         ) : loading ? (
-          <p role="status" className="text-foreground/60 py-12 text-center">
-            Loading projects…
-          </p>
+          <div
+            role="status"
+            aria-label="Loading projects"
+            aria-busy="true"
+            className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          >
+            <span className="sr-only">Loading projects</span>
+            {Array.from({ length: 3 }, (_, index) => (
+              <article
+                key={index}
+                aria-hidden="true"
+                className="border-foreground/10 bg-background overflow-hidden rounded-3xl border"
+              >
+                <Skeleton className="aspect-[16/10] w-full rounded-none" />
+                <div className="grid gap-3 p-5">
+                  <Skeleton className="h-3 w-28" />
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <div className="mt-2 flex justify-between gap-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <div className="border-foreground/10 mt-2 flex justify-between border-t pt-4">
+                    <Skeleton className="h-8 w-28" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
         ) : visibleProjects.length === 0 ? (
           <div className="border-foreground/15 rounded-2xl border border-dashed px-6 py-12 text-center">
-            <h3 className="text-lg font-medium">No projects yet</h3>
+            <h3 className="text-lg font-medium">
+              {projects.length
+                ? "No projects match these filters"
+                : "No projects yet"}
+            </h3>
             <p className="text-foreground/60 mt-2 text-sm">
-              Be the first to share something you&apos;ve built.
+              {projects.length
+                ? "Try another search or programming language."
+                : "Be the first to share something you&apos;ve built."}
             </p>
-            <Link
-              href="/submit"
-              className="focus-ring bg-foreground text-background mt-5 inline-flex rounded-xl px-4 py-2.5 text-sm font-medium"
-            >
-              Post a project
-            </Link>
+            {projects.length ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setLanguageFilter("all");
+                }}
+                className="focus-ring border-foreground/10 hover:bg-foreground/5 mt-5 inline-flex rounded-xl border px-4 py-2.5 text-sm font-medium"
+              >
+                Clear filters
+              </button>
+            ) : (
+              <Link
+                href="/submit"
+                className="focus-ring bg-foreground text-background mt-5 inline-flex rounded-xl px-4 py-2.5 text-sm font-medium"
+              >
+                Post a project
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -350,13 +447,17 @@ function ProjectCardView({
       )}
 
       <div className="flex flex-1 flex-col p-5">
-        <div className="text-foreground/50 mb-3 flex items-center gap-2 text-xs font-medium tracking-[0.12em] uppercase">
-          {project.kind === "files" ? (
-            <Code2 aria-hidden="true" className="h-4 w-4" />
-          ) : (
-            <Link2 aria-hidden="true" className="h-4 w-4" />
-          )}
-          {project.kind === "files" ? "HTML project" : "External project"}
+        <div className="text-foreground/50 mb-3 flex flex-wrap items-center gap-2 text-xs font-medium tracking-[0.12em] uppercase">
+          <span className="inline-flex items-center gap-2">
+            {project.kind === "files" ? (
+              <Code2 aria-hidden="true" className="h-4 w-4" />
+            ) : (
+              <Link2 aria-hidden="true" className="h-4 w-4" />
+            )}
+            {project.kind === "files" ? "HTML project" : "External project"}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>{project.language || "Language not specified"}</span>
         </div>
         <h3 className="text-xl leading-snug font-semibold tracking-tight">
           {project.title}
@@ -366,34 +467,54 @@ function ProjectCardView({
         </p>
 
         <div className="text-foreground/50 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <span>By {project.authorName}</span>
+          <span>
+            By {project.authorName}
+            {project.authorGrade
+              ? ` · Grade: ${project.authorGrade}`
+              : " · Grade not specified"}
+            {project.authorFamily ? ` · ${project.authorFamily}` : ""}
+          </span>
           <time dateTime={project.createdAt}>
             {formatDate(project.createdAt)}
           </time>
         </div>
 
-        <div className="border-foreground/10 mt-5 flex items-center justify-between border-t pt-4">
-          {project.kind === "link" && project.url ? (
-            <a
-              href={project.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
-            >
-              Open project
-              <ExternalLink aria-hidden="true" className="h-4 w-4" />
-            </a>
-          ) : (
-            <Link
-              href={`/projects/${project.id}/preview`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
-            >
-              Open preview
-              <ExternalLink aria-hidden="true" className="h-4 w-4" />
-            </Link>
-          )}
+        <div className="border-foreground/10 mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+          <div className="flex flex-wrap items-center gap-1">
+            {project.kind === "link" && project.url ? (
+              <a
+                href={project.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
+              >
+                Open project
+                <ExternalLink aria-hidden="true" className="h-4 w-4" />
+              </a>
+            ) : (
+              <Link
+                href={`/projects/${project.id}/preview`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
+              >
+                Open preview
+                <ExternalLink aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            )}
+            {project.githubUrl ? (
+              <a
+                href={project.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
+              >
+                <Github aria-hidden="true" className="h-4 w-4" />
+                GitHub
+                <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+              </a>
+            ) : null}
+          </div>
           <PulseHeart
             key={pulseKey}
             liked={liked}

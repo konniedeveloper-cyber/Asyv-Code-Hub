@@ -10,6 +10,8 @@ import type {
   ProjectSourceFile,
   PublicUser,
   ProjectStatus,
+  StudentFamily,
+  StudentGrade,
 } from "@/lib/types";
 
 const PROJECTS = "projects";
@@ -19,8 +21,12 @@ type ProjectDoc = {
   _id: ObjectId;
   authorId: ObjectId;
   authorName: string;
+  authorFamily?: StudentFamily | null;
+  authorGrade?: StudentGrade | null;
   title: string;
   description: string;
+  language?: string;
+  githubUrl?: string | null;
   kind: "link" | "files";
   url: string | null;
   coverImage?: string | null;
@@ -60,6 +66,10 @@ function toCard(
     url: doc.url,
     coverImage: doc.coverImage ?? null,
     authorName: doc.authorName,
+    authorFamily: doc.authorFamily ?? null,
+    authorGrade: doc.authorGrade ?? null,
+    language: doc.language ?? "",
+    githubUrl: doc.githubUrl ?? null,
     likeCount,
     likedByMe,
     createdAt: doc.createdAt.toISOString(),
@@ -86,6 +96,10 @@ function toManagementItem(doc: ProjectDoc): ProjectManagementItem {
     url: doc.url,
     coverImage: doc.coverImage ?? null,
     authorName: doc.authorName,
+    authorFamily: doc.authorFamily ?? null,
+    authorGrade: doc.authorGrade ?? null,
+    language: doc.language ?? "",
+    githubUrl: doc.githubUrl ?? null,
     status: doc.status ?? "approved",
     reviewReason: doc.reviewReason ?? null,
     createdAt: doc.createdAt.toISOString(),
@@ -109,6 +123,10 @@ export async function listProjects(
           url: 1,
           coverImage: 1,
           authorName: 1,
+          authorFamily: 1,
+          authorGrade: 1,
+          language: 1,
+          githubUrl: 1,
           createdAt: 1,
         },
       }
@@ -161,6 +179,10 @@ export async function listMyProjects(
           url: 1,
           coverImage: 1,
           authorName: 1,
+          authorFamily: 1,
+          authorGrade: 1,
+          language: 1,
+          githubUrl: 1,
           status: 1,
           reviewReason: 1,
           createdAt: 1,
@@ -187,6 +209,10 @@ export async function listAdminProjects(): Promise<ProjectManagementItem[]> {
           url: 1,
           coverImage: 1,
           authorName: 1,
+          authorFamily: 1,
+          authorGrade: 1,
+          language: 1,
+          githubUrl: 1,
           status: 1,
           reviewReason: 1,
           createdAt: 1,
@@ -230,8 +256,12 @@ export async function createProject(
     _id: new ObjectId(),
     authorId: new ObjectId(author.id),
     authorName: author.name,
+    authorFamily: author.family,
+    authorGrade: author.grade,
     title: draft.title,
     description: draft.description,
+    language: draft.language,
+    githubUrl: draft.githubUrl,
     kind: draft.kind,
     url: draft.kind === "link" ? draft.url : null,
     coverImage: draft.coverImage,
@@ -262,10 +292,9 @@ export async function getEditableProject(
     actor.role === "admin"
       ? { _id: projectId }
       : { _id: projectId, authorId: actorId };
-  const doc = await getDb()
-    .then((db) =>
-      db.collection<ProjectDoc>(PROJECTS).findOne(filter)
-    );
+  const doc = await getDb().then((db) =>
+    db.collection<ProjectDoc>(PROJECTS).findOne(filter)
+  );
   if (!doc) return null;
 
   if (doc.kind === "link") {
@@ -274,24 +303,27 @@ export async function getEditableProject(
       kind: "link",
       title: doc.title,
       description: doc.description,
+      language: doc.language ?? "",
+      githubUrl: doc.githubUrl ?? null,
       url: doc.url ?? "",
       coverImage: doc.coverImage ?? null,
     };
   }
 
-  const files =
-    doc.files?.length
-      ? doc.files
-      : [
-          { name: "index.html", content: doc.html ?? "" },
-          { name: "style.css", content: doc.css ?? "" },
-          { name: "script.js", content: doc.js ?? "" },
-        ];
+  const files = doc.files?.length
+    ? doc.files
+    : [
+        { name: "index.html", content: doc.html ?? "" },
+        { name: "style.css", content: doc.css ?? "" },
+        { name: "script.js", content: doc.js ?? "" },
+      ];
   return {
     id: doc._id.toHexString(),
     kind: "files",
     title: doc.title,
     description: doc.description,
+    language: doc.language ?? "",
+    githubUrl: doc.githubUrl ?? null,
     files,
     coverImage: doc.coverImage ?? null,
   };
@@ -315,6 +347,8 @@ export async function updateProject(
       ? {
           title: draft.title,
           description: draft.description,
+          language: draft.language,
+          githubUrl: draft.githubUrl,
           kind: "link" as const,
           url: draft.url,
           coverImage: draft.coverImage,
@@ -330,13 +364,21 @@ export async function updateProject(
       : {
           title: draft.title,
           description: draft.description,
+          language: draft.language,
+          githubUrl: draft.githubUrl,
           kind: "files" as const,
           url: null,
           coverImage: draft.coverImage,
           files: draft.files,
-          html: draft.files.find((file) => file.name.toLowerCase() === "index.html")?.content ?? "",
-          css: draft.files.find((file) => file.name.toLowerCase() === "style.css")?.content ?? "",
-          js: draft.files.find((file) => file.name.toLowerCase() === "script.js")?.content ?? "",
+          html:
+            draft.files.find((file) => file.name.toLowerCase() === "index.html")
+              ?.content ?? "",
+          css:
+            draft.files.find((file) => file.name.toLowerCase() === "style.css")
+              ?.content ?? "",
+          js:
+            draft.files.find((file) => file.name.toLowerCase() === "script.js")
+              ?.content ?? "",
           status: "pending" as const,
           reviewReason: null,
           reviewedAt: null,

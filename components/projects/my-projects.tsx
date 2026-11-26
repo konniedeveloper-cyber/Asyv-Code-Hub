@@ -2,6 +2,7 @@
 
 import type { ProjectManagementItem, ProjectStatus } from "@/lib/types";
 import { isRecord, readError } from "@/lib/parse";
+import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { ExternalLink, Pencil, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -16,6 +17,10 @@ function isProject(value: unknown): value is ProjectManagementItem {
     (value.url === null || typeof value.url === "string") &&
     (value.coverImage === null || typeof value.coverImage === "string") &&
     typeof value.authorName === "string" &&
+    (value.authorFamily === null || typeof value.authorFamily === "string") &&
+    (value.authorGrade === null || typeof value.authorGrade === "string") &&
+    typeof value.language === "string" &&
+    (value.githubUrl === null || typeof value.githubUrl === "string") &&
     (value.status === "pending" ||
       value.status === "approved" ||
       value.status === "rejected") &&
@@ -144,9 +149,31 @@ export function MyProjects(): ReactNode {
           ) : null}
         </div>
       ) : loading ? (
-        <p role="status" className="text-foreground/60 py-12 text-center">
-          Loading your projects…
-        </p>
+        <div
+          role="status"
+          aria-label="Loading your projects"
+          aria-busy="true"
+          className="grid gap-4"
+        >
+          <span className="sr-only">Loading your projects</span>
+          {Array.from({ length: 3 }, (_, index) => (
+            <article
+              key={index}
+              aria-hidden="true"
+              className="border-foreground/10 grid gap-4 rounded-2xl border p-5 sm:grid-cols-[1fr_auto] sm:items-center"
+            >
+              <div className="grid gap-3">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-16" />
+                <Skeleton className="h-9 w-20" />
+              </div>
+            </article>
+          ))}
+        </div>
       ) : projects.length === 0 ? (
         <div className="border-foreground/15 rounded-2xl border border-dashed px-6 py-12 text-center">
           <h2 className="text-lg font-medium">You haven&apos;t posted yet</h2>
@@ -186,6 +213,22 @@ export function MyProjects(): ReactNode {
                 </div>
                 <p className="text-foreground/60 mt-2 line-clamp-2 text-sm">
                   {project.description}
+                </p>
+                <p className="text-foreground/50 mt-2 text-xs">
+                  {project.language || "Language not specified"}
+                  {project.githubUrl ? (
+                    <>
+                      {" · "}
+                      <a
+                        href={project.githubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-2"
+                      >
+                        GitHub repository
+                      </a>
+                    </>
+                  ) : null}
                 </p>
                 {project.status === "pending" ? (
                   <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
@@ -234,7 +277,11 @@ export function MyProjects(): ReactNode {
                   className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                 >
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
-                  {deletingId === project.id ? "Deleting…" : "Delete"}
+                  {deletingId === project.id ? (
+                    <LoadingIndicator label="Deleting" />
+                  ) : (
+                    "Delete"
+                  )}
                 </button>
               </div>
             </article>

@@ -6,6 +6,7 @@ import type {
   ProjectStatus,
 } from "@/lib/types";
 import { isRecord, readError } from "@/lib/parse";
+import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { ExternalLink, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -20,6 +21,10 @@ function isProject(value: unknown): value is ProjectManagementItem {
     (value.url === null || typeof value.url === "string") &&
     (value.coverImage === null || typeof value.coverImage === "string") &&
     typeof value.authorName === "string" &&
+    (value.authorFamily === null || typeof value.authorFamily === "string") &&
+    (value.authorGrade === null || typeof value.authorGrade === "string") &&
+    typeof value.language === "string" &&
+    (value.githubUrl === null || typeof value.githubUrl === "string") &&
     (value.status === "pending" ||
       value.status === "approved" ||
       value.status === "rejected") &&
@@ -44,6 +49,13 @@ const STATUS_STYLES: Record<ProjectStatus, string> = {
   rejected: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };
 
+type BusyAction =
+  | "approve"
+  | "reject"
+  | "delete-pending-project"
+  | "delete-project"
+  | "delete-student";
+
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Recently";
@@ -60,7 +72,10 @@ export function AdminDashboard(): ReactNode {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<{
+    id: string;
+    action: BusyAction;
+  } | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -123,8 +138,11 @@ export function AdminDashboard(): ReactNode {
     project: ProjectManagementItem,
     status: "approved" | "rejected"
   ): Promise<void> {
-    if (busyId) return;
-    setBusyId(project.id);
+    if (busyAction) return;
+    setBusyAction({
+      id: project.id,
+      action: status === "approved" ? "approve" : "reject",
+    });
     setError(null);
     const reason = reviewNotes[project.id]?.trim() ?? "";
     try {
@@ -152,15 +170,25 @@ export function AdminDashboard(): ReactNode {
     } catch {
       setError("Could not update the project review. Try again.");
     } finally {
-      setBusyId(null);
+      setBusyAction(null);
     }
   }
 
-  async function removeProject(project: ProjectManagementItem): Promise<void> {
-    if (busyId || !window.confirm(`Permanently delete "${project.title}"?`)) {
+  async function removeProject(
+    project: ProjectManagementItem,
+    location: "pending" | "all"
+  ): Promise<void> {
+    if (
+      busyAction ||
+      !window.confirm(`Permanently delete "${project.title}"?`)
+    ) {
       return;
     }
-    setBusyId(project.id);
+    setBusyAction({
+      id: project.id,
+      action:
+        location === "pending" ? "delete-pending-project" : "delete-project",
+    });
     setError(null);
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
@@ -177,20 +205,20 @@ export function AdminDashboard(): ReactNode {
     } catch {
       setError("Could not delete the project. Try again.");
     } finally {
-      setBusyId(null);
+      setBusyAction(null);
     }
   }
 
   async function removeStudent(student: AdminStudent): Promise<void> {
     if (
-      busyId ||
+      busyAction ||
       !window.confirm(
         `Delete student account ${student.email} and all of their projects?`
       )
     ) {
       return;
     }
-    setBusyId(student.id);
+    setBusyAction({ id: student.id, action: "delete-student" });
     setError(null);
     try {
       const response = await fetch(`/api/admin/users/${student.id}`, {
@@ -209,7 +237,7 @@ export function AdminDashboard(): ReactNode {
     } catch {
       setError("Could not delete the student account. Try again.");
     } finally {
-      setBusyId(null);
+      setBusyAction(null);
     }
   }
 
@@ -254,9 +282,35 @@ export function AdminDashboard(): ReactNode {
           ) : null}
         </div>
       ) : loading ? (
-        <p role="status" className="text-foreground/60 py-12 text-center">
-          Loading admin dashboard…
-        </p>
+        <div
+          role="status"
+          aria-label="Loading admin dashboard"
+          aria-busy="true"
+          className="grid gap-8"
+        >
+          <span className="sr-only">Loading admin dashboard</span>
+          {Array.from({ length: 2 }, (_, sectionIndex) => (
+            <section
+              key={sectionIndex}
+              aria-hidden="true"
+              className="border-foreground/10 grid gap-4 rounded-2xl border p-5"
+            >
+              <Skeleton className="h-7 w-48" />
+              {Array.from({ length: 2 }, (_, itemIndex) => (
+                <div
+                  key={itemIndex}
+                  className="border-foreground/10 flex items-center justify-between gap-4 rounded-xl border p-4"
+                >
+                  <div className="grid flex-1 gap-3">
+                    <Skeleton className="h-5 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                  <Skeleton className="h-9 w-20" />
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
       ) : (
         <>
           <section aria-labelledby="pending-heading">
@@ -290,7 +344,15 @@ export function AdminDashboard(): ReactNode {
                           </span>
                         </div>
                         <p className="text-foreground/55 mt-1 text-xs">
-                          By {project.authorName} ·{" "}
+                          By {project.authorName}
+                          {project.authorGrade
+                            ? ` · ${project.authorGrade}`
+                            : ""}
+                          {project.authorFamily
+                            ? ` · ${project.authorFamily}`
+                            : ""}
+                          {" · "}
+                          {project.language || "Language not specified"} ·{" "}
                           {formatDate(project.createdAt)}
                         </p>
                         <p className="text-foreground/65 mt-3 text-sm leading-relaxed">
@@ -344,27 +406,44 @@ export function AdminDashboard(): ReactNode {
                       <button
                         type="button"
                         onClick={() => void reviewProject(project, "approved")}
-                        disabled={busyId !== null}
+                        disabled={busyAction !== null}
                         className="focus-ring bg-foreground text-background rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50"
                       >
-                        Approve
+                        {busyAction?.id === project.id &&
+                        busyAction.action === "approve" ? (
+                          <LoadingIndicator label="Approving" />
+                        ) : (
+                          "Approve"
+                        )}
                       </button>
                       <button
                         type="button"
                         onClick={() => void reviewProject(project, "rejected")}
-                        disabled={busyId !== null}
+                        disabled={busyAction !== null}
                         className="focus-ring border-foreground/15 hover:bg-foreground/5 rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50"
                       >
-                        Reject
+                        {busyAction?.id === project.id &&
+                        busyAction.action === "reject" ? (
+                          <LoadingIndicator label="Rejecting" />
+                        ) : (
+                          "Reject"
+                        )}
                       </button>
                       <button
                         type="button"
-                        onClick={() => void removeProject(project)}
-                        disabled={busyId !== null}
+                        onClick={() => void removeProject(project, "pending")}
+                        disabled={busyAction !== null}
                         className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                       >
-                        <Trash2 aria-hidden="true" className="h-4 w-4" />
-                        Delete
+                        {busyAction?.id === project.id &&
+                        busyAction.action === "delete-pending-project" ? (
+                          <LoadingIndicator label="Deleting" />
+                        ) : (
+                          <>
+                            <Trash2 aria-hidden="true" className="h-4 w-4" />
+                            Delete
+                          </>
+                        )}
                       </button>
                     </div>
                   </article>
@@ -406,12 +485,19 @@ export function AdminDashboard(): ReactNode {
                     </div>
                     <button
                       type="button"
-                      onClick={() => void removeProject(project)}
-                      disabled={busyId !== null}
+                      onClick={() => void removeProject(project, "all")}
+                      disabled={busyAction !== null}
                       className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                     >
-                      <Trash2 aria-hidden="true" className="h-4 w-4" />
-                      Delete
+                      {busyAction?.id === project.id &&
+                      busyAction.action === "delete-project" ? (
+                        <LoadingIndicator label="Deleting" />
+                      ) : (
+                        <>
+                          <Trash2 aria-hidden="true" className="h-4 w-4" />
+                          Delete
+                        </>
+                      )}
                     </button>
                   </article>
                 ))}
@@ -443,11 +529,18 @@ export function AdminDashboard(): ReactNode {
                     <button
                       type="button"
                       onClick={() => void removeStudent(student)}
-                      disabled={busyId !== null}
+                      disabled={busyAction !== null}
                       className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                     >
-                      <Trash2 aria-hidden="true" className="h-4 w-4" />
-                      {busyId === student.id ? "Deleting…" : "Delete student"}
+                      {busyAction?.id === student.id &&
+                      busyAction.action === "delete-student" ? (
+                        <LoadingIndicator label="Deleting" />
+                      ) : (
+                        <>
+                          <Trash2 aria-hidden="true" className="h-4 w-4" />
+                          Delete student
+                        </>
+                      )}
                     </button>
                   </article>
                 ))}

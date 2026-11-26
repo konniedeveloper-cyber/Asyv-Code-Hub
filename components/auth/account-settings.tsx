@@ -1,7 +1,14 @@
 "use client";
 
-import { isRecord, readError, readUser } from "@/lib/parse";
-import type { PublicUser } from "@/lib/types";
+import {
+  isRecord,
+  isStudentFamily,
+  isStudentGrade,
+  readError,
+  readUser,
+} from "@/lib/parse";
+import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
+import { STUDENT_FAMILIES, STUDENT_GRADES, type PublicUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
@@ -70,6 +77,8 @@ export function AccountSettings(): ReactNode {
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingImage, setSavingImage] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -156,13 +165,62 @@ export function AccountSettings(): ReactNode {
     }
   }
 
+  async function saveStudentDetails(): Promise<void> {
+    if (!user || savingDetails) return;
+    setSavingDetails(true);
+    setError(null);
+    setProfileNotice(null);
+    try {
+      const response = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ family: user.family, grade: user.grade }),
+      });
+      const data: unknown = await response.json();
+      if (!response.ok) {
+        setError(readError(data, "Could not update your family and grade."));
+        return;
+      }
+      const updatedUser = readUser(data);
+      if (!updatedUser) {
+        setError("The profile update returned an unexpected response.");
+        return;
+      }
+      setUser(updatedUser);
+      setProfileNotice("Family and grade saved to your profile.");
+    } catch {
+      setError("Could not update your family and grade. Try again.");
+    } finally {
+      setSavingDetails(false);
+    }
+  }
+
   return (
     <section className="border-foreground/10 mt-8 rounded-2xl border p-5 sm:p-6">
       <h2 className="text-lg font-semibold">Account</h2>
       {loading ? (
-        <p role="status" className="text-foreground/60 mt-3 text-sm">
-          Loading account…
-        </p>
+        <div
+          role="status"
+          aria-label="Loading account"
+          aria-busy="true"
+          className="mt-4 grid gap-4"
+        >
+          <span className="sr-only">Loading account</span>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-20 w-20 rounded-full" />
+            <div className="grid gap-3">
+              <Skeleton className="h-10 w-40" />
+              <Skeleton className="h-3 w-36" />
+            </div>
+          </div>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-4 w-56" />
+          <div className="border-foreground/10 grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-40 sm:col-span-2" />
+          </div>
+        </div>
       ) : user ? (
         <>
           <div className="mt-4 flex items-center gap-4">
@@ -183,7 +241,11 @@ export function AccountSettings(): ReactNode {
             </div>
             <div>
               <label className="focus-ring border-foreground/10 hover:bg-foreground/5 inline-flex min-h-10 cursor-pointer items-center rounded-lg border px-3 text-sm font-medium">
-                {savingImage ? "Saving..." : "Upload profile picture"}
+                {savingImage ? (
+                  <LoadingIndicator label="Saving" />
+                ) : (
+                  "Upload profile picture"
+                )}
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
@@ -202,6 +264,84 @@ export function AccountSettings(): ReactNode {
           <p className="text-foreground/50 mt-2 text-xs capitalize">
             Role: {user.role}
           </p>
+          <div className="border-foreground/10 mt-5 grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
+            <p className="text-foreground/55 text-xs leading-relaxed sm:col-span-2">
+              Family and grade are optional until you post a project. They will
+              be shown with your project owner details.
+            </p>
+            <label className="text-sm font-medium">
+              Family
+              <select
+                value={user.family ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setUser((current) =>
+                    current
+                      ? {
+                          ...current,
+                          family: isStudentFamily(value) ? value : null,
+                        }
+                      : current
+                  );
+                  setProfileNotice(null);
+                }}
+                className="focus-ring border-foreground/25 bg-background mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+              >
+                <option value="">Choose your family</option>
+                {STUDENT_FAMILIES.map((family) => (
+                  <option key={family} value={family}>
+                    {family}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-medium">
+              Grade
+              <select
+                value={user.grade ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setUser((current) =>
+                    current
+                      ? {
+                          ...current,
+                          grade: isStudentGrade(value) ? value : null,
+                        }
+                      : current
+                  );
+                  setProfileNotice(null);
+                }}
+                className="focus-ring border-foreground/25 bg-background mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+              >
+                <option value="">Choose your grade</option>
+                {STUDENT_GRADES.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => void saveStudentDetails()}
+              disabled={savingDetails}
+              className="focus-ring bg-foreground text-background inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-medium disabled:opacity-50 sm:col-span-2 sm:justify-self-start"
+            >
+              {savingDetails ? (
+                <LoadingIndicator label="Saving" />
+              ) : (
+                "Save family and grade"
+              )}
+            </button>
+            {profileNotice ? (
+              <p
+                role="status"
+                className="text-sm text-emerald-700 sm:col-span-2 dark:text-emerald-300"
+              >
+                {profileNotice}
+              </p>
+            ) : null}
+          </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               href="/my-projects"
@@ -223,7 +363,11 @@ export function AccountSettings(): ReactNode {
               disabled={loggingOut}
               className="focus-ring bg-foreground text-background rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
             >
-              {loggingOut ? "Logging out…" : "Log out"}
+              {loggingOut ? (
+                <LoadingIndicator label="Logging out" />
+              ) : (
+                "Log out"
+              )}
             </button>
           </div>
         </>

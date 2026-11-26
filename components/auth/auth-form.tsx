@@ -2,10 +2,17 @@
 
 import { readError, readUser } from "@/lib/parse";
 import { LIMITS } from "@/lib/limits";
-import SlideCommit from "@/components/SlideCommit";
+import { STUDENT_FAMILIES, STUDENT_GRADES } from "@/lib/types";
+import SlideCommit, { type SlideCommitHandle } from "@/components/SlideCommit";
 import { ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 
 type AuthMode = "login" | "register";
 
@@ -15,8 +22,11 @@ const fieldClassName =
 export function AuthForm(): ReactNode {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const slideRef = useRef<SlideCommitHandle>(null);
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
+  const [family, setFamily] = useState("");
+  const [grade, setGrade] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +48,14 @@ export function AuthForm(): ReactNode {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           mode === "register"
-            ? { mode, name, email, password }
+            ? {
+                mode,
+                name,
+                email,
+                password,
+                family: family || null,
+                grade: grade || null,
+              }
             : { mode, email, password }
         ),
       });
@@ -61,6 +78,24 @@ export function AuthForm(): ReactNode {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleFormSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!formRef.current?.reportValidity()) return;
+    slideRef.current?.submit();
+  }
+
+  function handleFormKeyDown(event: KeyboardEvent<HTMLFormElement>): void {
+    if (
+      event.key !== "Enter" ||
+      event.nativeEvent.isComposing ||
+      !(event.target instanceof HTMLInputElement)
+    )
+      return;
+
+    event.preventDefault();
+    formRef.current?.requestSubmit();
   }
 
   function changeMode(nextMode: AuthMode): void {
@@ -99,7 +134,8 @@ export function AuthForm(): ReactNode {
 
       <form
         ref={formRef}
-        onSubmit={(event: FormEvent<HTMLFormElement>) => event.preventDefault()}
+        onSubmit={handleFormSubmit}
+        onKeyDown={handleFormKeyDown}
         className="grid gap-5"
       >
         {mode === "register" ? (
@@ -115,6 +151,50 @@ export function AuthForm(): ReactNode {
               className={fieldClassName}
             />
           </label>
+        ) : null}
+        {mode === "register" ? (
+          <details className="border-foreground/10 rounded-xl border px-4 py-3">
+            <summary className="focus-ring cursor-pointer text-sm font-medium">
+              Student details{" "}
+              <span className="text-foreground/50 font-normal">(optional)</span>
+            </summary>
+            <p className="text-foreground/55 mt-2 text-xs leading-relaxed">
+              Add these now if you plan to post projects, or skip them to sign
+              up as a viewer. You can add them later.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-medium">
+                Family
+                <select
+                  value={family}
+                  onChange={(event) => setFamily(event.target.value)}
+                  className={fieldClassName}
+                >
+                  <option value="">Choose family (optional)</option>
+                  {STUDENT_FAMILIES.map((studentFamily) => (
+                    <option key={studentFamily} value={studentFamily}>
+                      {studentFamily}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm font-medium">
+                Grade
+                <select
+                  value={grade}
+                  onChange={(event) => setGrade(event.target.value)}
+                  className={fieldClassName}
+                >
+                  <option value="">Choose grade (optional)</option>
+                  {STUDENT_GRADES.map((studentGrade) => (
+                    <option key={studentGrade} value={studentGrade}>
+                      {studentGrade}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </details>
         ) : null}
         <label className="text-sm font-medium">
           Email
@@ -157,6 +237,7 @@ export function AuthForm(): ReactNode {
 
         <div className="flex justify-center pt-1">
           <SlideCommit
+            ref={slideRef}
             label={
               mode === "register" ? "Slide to sign up" : "Slide to sign in"
             }

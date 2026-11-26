@@ -9,8 +9,10 @@ import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import CodeMirror from "@uiw/react-codemirror";
 import { buildPreviewDocument } from "@/lib/preview-document";
-import { readError, readProjectId } from "@/lib/parse";
+import { isRecord, readError, readProjectId, readUser } from "@/lib/parse";
 import { LIMITS } from "@/lib/limits";
+import { STUDENT_FAMILIES, STUDENT_GRADES } from "@/lib/types";
+import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { Code2, ExternalLink, Link2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -165,6 +167,8 @@ export function ProjectSubmitForm({
   const [kind, setKind] = useState<ProjectKind>("files");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [language, setLanguage] = useState("");
+  const [githubUrl, setGithubUrl] = useState("");
   const [url, setUrl] = useState("");
   const [html, setHtml] = useState("");
   const [css, setCss] = useState("");
@@ -174,6 +178,44 @@ export function ProjectSubmitForm({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(projectId !== null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileDetails, setProfileDetails] = useState<{
+    family: string | null;
+    grade: string | null;
+  } | null>(null);
+  const [family, setFamily] = useState("");
+  const [grade, setGrade] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(async (response) => {
+        const data: unknown = await response.json();
+        if (!active) return;
+        if (!response.ok || !isRecord(data) || !("user" in data)) {
+          setError(readError(data, "Could not load your student profile."));
+          return;
+        }
+        const user = readUser(data);
+        if (!user) {
+          setError("Sign in before posting a project.");
+          return;
+        }
+        setProfileDetails({ family: user.family, grade: user.grade });
+        setFamily(user.family ?? "");
+        setGrade(user.grade ?? "");
+      })
+      .catch(() => {
+        if (active) setError("Could not load your student profile.");
+      })
+      .finally(() => {
+        if (active) setProfileLoaded(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!projectId) return;
@@ -200,7 +242,9 @@ export function ProjectSubmitForm({
           !("kind" in project) ||
           !("title" in project) ||
           !("description" in project) ||
-          !("coverImage" in project)
+          !("coverImage" in project) ||
+          !("language" in project) ||
+          !("githubUrl" in project)
         ) {
           setError("The project returned an unexpected response.");
           return;
@@ -210,6 +254,12 @@ export function ProjectSubmitForm({
         setTitle(typeof project.title === "string" ? project.title : "");
         setDescription(
           typeof project.description === "string" ? project.description : ""
+        );
+        setLanguage(
+          typeof project.language === "string" ? project.language : ""
+        );
+        setGithubUrl(
+          typeof project.githubUrl === "string" ? project.githubUrl : ""
         );
         setCoverImage(
           typeof project.coverImage === "string" ? project.coverImage : null
@@ -412,6 +462,21 @@ export function ProjectSubmitForm({
     event: FormEvent<HTMLFormElement>
   ): Promise<void> {
     event.preventDefault();
+    if (!profileLoaded) {
+      setError("Please wait while your student profile loads.");
+      return;
+    }
+    if (!profileDetails) {
+      setError("Sign in before posting a project.");
+      return;
+    }
+    if (
+      (!profileDetails.family || !profileDetails.grade) &&
+      (!family || !grade)
+    ) {
+      setError("Choose your family and grade before posting.");
+      return;
+    }
     if (!coverImage) {
       setError("Add a project cover image before publishing.");
       return;
@@ -420,11 +485,13 @@ export function ProjectSubmitForm({
     setError(null);
     const draft =
       kind === "link"
-        ? { kind, title, description, url, coverImage }
+        ? { kind, title, description, language, githubUrl, url, coverImage }
         : {
             kind,
             title,
             description,
+            language,
+            githubUrl,
             coverImage,
             files: [
               { name: "index.html", content: html },
@@ -438,6 +505,29 @@ export function ProjectSubmitForm({
           };
 
     try {
+      if (!profileDetails.family || !profileDetails.grade) {
+        const profileResponse = await fetch("/api/auth/me", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ family, grade }),
+        });
+        const profileData: unknown = await profileResponse.json();
+        const updatedUser = readUser(profileData);
+        if (!profileResponse.ok || !updatedUser) {
+          setError(
+            readError(
+              profileData,
+              "Could not save your family and grade to your profile."
+            )
+          );
+          return;
+        }
+        setProfileDetails({
+          family: updatedUser.family,
+          grade: updatedUser.grade,
+        });
+      }
+
       const response = await fetch(
         projectId
           ? `/api/projects/${encodeURIComponent(projectId)}`
@@ -483,12 +573,18 @@ export function ProjectSubmitForm({
   return (
     <form onSubmit={handleSubmit} className="grid gap-6">
       {loadingEdit ? (
-        <p
+        <div
           role="status"
-          className="text-foreground/60 border-foreground/10 rounded-xl border p-5 text-sm"
+          aria-label="Loading project for editing"
+          aria-busy="true"
+          className="border-foreground/10 grid gap-4 rounded-xl border p-5"
         >
-          Loading project for editing…
-        </p>
+          <span className="sr-only">Loading project for editing</span>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-11 w-2/3" />
+        </div>
       ) : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-sm font-medium">
@@ -537,18 +633,97 @@ export function ProjectSubmitForm({
       </div>
 
       <label className="text-sm font-medium">
-        Description
+        Description (what problem does it solve?)
         <textarea
           required
           minLength={2}
           maxLength={LIMITS.description}
           value={description}
           onChange={(event) => setDescription(event.target.value)}
-          placeholder="What does your project do?"
+          placeholder="Describe what your project does and the problem it solves."
           rows={3}
           className={`${fieldClassName} resize-y`}
         />
       </label>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm font-medium">
+          Programming language
+          <input
+            required
+            minLength={2}
+            maxLength={80}
+            value={language}
+            onChange={(event) => setLanguage(event.target.value)}
+            placeholder="e.g. JavaScript, Python, HTML/CSS"
+            className={fieldClassName}
+          />
+        </label>
+        <label className="text-sm font-medium">
+          Public GitHub repository{" "}
+          <span className="text-foreground/50 font-normal">(optional)</span>
+          <input
+            type="url"
+            value={githubUrl}
+            onChange={(event) => setGithubUrl(event.target.value)}
+            placeholder="https://github.com/owner/repository"
+            className={fieldClassName}
+          />
+        </label>
+      </div>
+
+      {profileLoaded && profileDetails ? (
+        !profileDetails.family || !profileDetails.grade ? (
+          <section className="border-foreground/10 grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
+            <p className="text-foreground/60 text-xs leading-relaxed sm:col-span-2">
+              Add these once to your profile. They&apos;ll be reused on your
+              future project posts.
+            </p>
+            <label className="text-sm font-medium">
+              Family
+              <select
+                required
+                value={family}
+                onChange={(event) => setFamily(event.target.value)}
+                className={fieldClassName}
+              >
+                <option value="">Choose your family</option>
+                {STUDENT_FAMILIES.map((studentFamily) => (
+                  <option key={studentFamily} value={studentFamily}>
+                    {studentFamily}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-medium">
+              Grade
+              <select
+                required
+                value={grade}
+                onChange={(event) => setGrade(event.target.value)}
+                className={fieldClassName}
+              >
+                <option value="">Choose your grade</option>
+                {STUDENT_GRADES.map((studentGrade) => (
+                  <option key={studentGrade} value={studentGrade}>
+                    {studentGrade}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </section>
+        ) : (
+          <p className="text-foreground/55 text-xs">
+            Posting as {profileDetails.grade} · {profileDetails.family}. You can
+            update these in account settings.
+          </p>
+        )
+      ) : (
+        <LoadingIndicator
+          label="Loading your student profile"
+          className="text-foreground/55 text-xs"
+        />
+      )}
 
       <section
         aria-labelledby="cover-image-heading"
@@ -779,13 +954,16 @@ export function ProjectSubmitForm({
         disabled={submitting || loadingEdit}
         className="focus-ring bg-foreground text-background inline-flex min-h-12 items-center justify-center rounded-xl px-5 text-sm font-semibold transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50 sm:justify-self-start"
       >
-        {submitting
-          ? projectId
-            ? "Saving…"
-            : "Publishing…"
-          : projectId
-            ? "Save changes"
-            : "Publish project"}
+        {submitting ? (
+          <LoadingIndicator
+            label={projectId ? "Saving" : "Publishing"}
+            className="text-background"
+          />
+        ) : projectId ? (
+          "Save changes"
+        ) : (
+          "Publish project"
+        )}
       </button>
     </form>
   );
