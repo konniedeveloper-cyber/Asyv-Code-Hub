@@ -179,6 +179,7 @@ export async function deleteStudent(
   await db.collection("likes").deleteMany({
     $or: [{ userId: studentObjectId }, { projectId: { $in: projectIds } }],
   });
+  await db.collection("notifications").deleteMany({ userId: studentObjectId });
   await projects.deleteMany({ authorId: studentObjectId });
 
   const result = await users.deleteOne({

@@ -9,7 +9,7 @@ import { isRecord, readError } from "@/lib/parse";
 import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { ExternalLink, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 function isProject(value: unknown): value is ProjectManagementItem {
   return (
@@ -56,6 +56,14 @@ type BusyAction =
   | "delete-project"
   | "delete-student";
 
+type PendingDeletion =
+  | {
+      type: "project";
+      project: ProjectManagementItem;
+      location: "pending" | "all";
+    }
+  | { type: "student"; student: AdminStudent };
+
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Recently";
@@ -77,6 +85,23 @@ export function AdminDashboard(): ReactNode {
     action: BusyAction;
   } | null>(null);
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [pendingDeletion, setPendingDeletion] =
+    useState<PendingDeletion | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const confirmationDialogRef = useRef<HTMLDialogElement>(null);
+  const cancelDeleteButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = confirmationDialogRef.current;
+    if (!dialog) return;
+
+    if (pendingDeletion && !dialog.open) {
+      dialog.showModal();
+      cancelDeleteButtonRef.current?.focus();
+    } else if (!pendingDeletion && dialog.open) {
+      dialog.close();
+    }
+  }, [pendingDeletion]);
 
   useEffect(() => {
     let active = true;
@@ -178,17 +203,13 @@ export function AdminDashboard(): ReactNode {
     project: ProjectManagementItem,
     location: "pending" | "all"
   ): Promise<void> {
-    if (
-      busyAction ||
-      !window.confirm(`Permanently delete "${project.title}"?`)
-    ) {
-      return;
-    }
+    if (busyAction) return;
     setBusyAction({
       id: project.id,
       action:
         location === "pending" ? "delete-pending-project" : "delete-project",
     });
+    setDeleteError(null);
     setError(null);
     try {
       const response = await fetch(`/api/projects/${project.id}`, {
@@ -196,29 +217,28 @@ export function AdminDashboard(): ReactNode {
       });
       const data: unknown = await response.json();
       if (!response.ok) {
-        setError(readError(data, "Could not delete the project."));
+        const message = readError(data, "Could not delete the project.");
+        setError(message);
+        setDeleteError(message);
         return;
       }
       setProjects((current) =>
         current.filter((item) => item.id !== project.id)
       );
+      setPendingDeletion(null);
     } catch {
-      setError("Could not delete the project. Try again.");
+      const message = "Could not delete the project. Try again.";
+      setError(message);
+      setDeleteError(message);
     } finally {
       setBusyAction(null);
     }
   }
 
   async function removeStudent(student: AdminStudent): Promise<void> {
-    if (
-      busyAction ||
-      !window.confirm(
-        `Delete student account ${student.email} and all of their projects?`
-      )
-    ) {
-      return;
-    }
+    if (busyAction) return;
     setBusyAction({ id: student.id, action: "delete-student" });
+    setDeleteError(null);
     setError(null);
     try {
       const response = await fetch(`/api/admin/users/${student.id}`, {
@@ -226,7 +246,12 @@ export function AdminDashboard(): ReactNode {
       });
       const data: unknown = await response.json();
       if (!response.ok) {
-        setError(readError(data, "Could not delete the student account."));
+        const message = readError(
+          data,
+          "Could not delete the student account."
+        );
+        setError(message);
+        setDeleteError(message);
         return;
       }
       setStudents((current) =>
@@ -234,10 +259,37 @@ export function AdminDashboard(): ReactNode {
       );
       setLoading(true);
       setReloadKey((key) => key + 1);
+      setPendingDeletion(null);
     } catch {
-      setError("Could not delete the student account. Try again.");
+      const message = "Could not delete the student account. Try again.";
+      setError(message);
+      setDeleteError(message);
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  function requestProjectDeletion(
+    project: ProjectManagementItem,
+    location: "pending" | "all"
+  ): void {
+    if (busyAction) return;
+    setDeleteError(null);
+    setPendingDeletion({ type: "project", project, location });
+  }
+
+  function requestStudentDeletion(student: AdminStudent): void {
+    if (busyAction) return;
+    setDeleteError(null);
+    setPendingDeletion({ type: "student", student });
+  }
+
+  function confirmDeletion(): void {
+    if (!pendingDeletion || busyAction) return;
+    if (pendingDeletion.type === "project") {
+      void removeProject(pendingDeletion.project, pendingDeletion.location);
+    } else {
+      void removeStudent(pendingDeletion.student);
     }
   }
 
@@ -431,7 +483,9 @@ export function AdminDashboard(): ReactNode {
                       </button>
                       <button
                         type="button"
-                        onClick={() => void removeProject(project, "pending")}
+                        onClick={() =>
+                          requestProjectDeletion(project, "pending")
+                        }
                         disabled={busyAction !== null}
                         className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                       >
@@ -485,7 +539,7 @@ export function AdminDashboard(): ReactNode {
                     </div>
                     <button
                       type="button"
-                      onClick={() => void removeProject(project, "all")}
+                      onClick={() => requestProjectDeletion(project, "all")}
                       disabled={busyAction !== null}
                       className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                     >
@@ -528,7 +582,7 @@ export function AdminDashboard(): ReactNode {
                     </div>
                     <button
                       type="button"
-                      onClick={() => void removeStudent(student)}
+                      onClick={() => requestStudentDeletion(student)}
                       disabled={busyAction !== null}
                       className="focus-ring inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-500/10 disabled:opacity-50"
                     >
@@ -556,6 +610,74 @@ export function AdminDashboard(): ReactNode {
           </section>
         </>
       )}
+      <dialog
+        ref={confirmationDialogRef}
+        aria-labelledby="delete-confirmation-title"
+        aria-describedby="delete-confirmation-description"
+        onCancel={(event) => {
+          if (busyAction) {
+            event.preventDefault();
+            return;
+          }
+          setPendingDeletion(null);
+        }}
+        className="border-foreground/10 bg-background text-foreground m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border p-0 shadow-2xl backdrop:bg-black/60"
+      >
+        {pendingDeletion ? (
+          <div className="p-6">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
+              <Trash2 aria-hidden="true" className="h-5 w-5" />
+            </div>
+            <h2
+              id="delete-confirmation-title"
+              className="text-lg font-semibold"
+            >
+              {pendingDeletion.type === "project"
+                ? "Delete this project?"
+                : "Delete this student account?"}
+            </h2>
+            <p
+              id="delete-confirmation-description"
+              className="text-foreground/65 mt-2 text-sm leading-relaxed"
+            >
+              {pendingDeletion.type === "project"
+                ? `Permanently delete "${pendingDeletion.project.title}"? This action cannot be undone.`
+                : `Delete ${pendingDeletion.student.email} and all of their projects? This action cannot be undone.`}
+            </p>
+            {deleteError ? (
+              <p
+                role="alert"
+                className="mt-4 rounded-lg bg-rose-500/10 p-3 text-sm text-rose-700 dark:text-rose-300"
+              >
+                {deleteError}
+              </p>
+            ) : null}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                ref={cancelDeleteButtonRef}
+                type="button"
+                disabled={busyAction !== null}
+                onClick={() => setPendingDeletion(null)}
+                className="focus-ring border-foreground/15 hover:bg-foreground/5 rounded-lg border px-4 py-2 text-sm font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busyAction !== null}
+                onClick={confirmDeletion}
+                className="focus-ring inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busyAction ? (
+                  <LoadingIndicator label="Deleting" className="text-white" />
+                ) : (
+                  "Permanently delete"
+                )}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </dialog>
     </div>
   );
 }

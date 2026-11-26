@@ -19,6 +19,10 @@ async function ensureIndexes(db: Db): Promise<void> {
     db
       .collection("likes")
       .createIndex({ userId: 1, projectId: 1 }, { unique: true }),
+    db.collection("notifications").createIndex({ userId: 1, createdAt: -1 }),
+    db
+      .collection("notifications")
+      .createIndex({ userId: 1, readAt: 1, createdAt: -1 }),
   ]);
 }
 

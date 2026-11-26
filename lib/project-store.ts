@@ -1,6 +1,11 @@
 import { ObjectId } from "mongodb";
 
 import { isDuplicateKey, getDb } from "@/lib/mongodb";
+import {
+  createProjectDeletedNotification,
+  createProjectReviewNotification,
+  removeNotification,
+} from "@/lib/notifications";
 import type {
   ProjectCard,
   ProjectDetail,
@@ -448,22 +453,51 @@ export async function reviewProject(
   if (!projectId || !adminId) return null;
 
   const db = await getDb();
-  const result = await db.collection<ProjectDoc>(PROJECTS).updateOne(
+  const projects = db.collection<ProjectDoc>(PROJECTS);
+  const pendingProject = await projects.findOne(
     { _id: projectId, status: "pending" },
-    {
-      $set: {
-        status,
-        reviewReason: status === "rejected" ? reason : null,
-        reviewedAt: new Date(),
-        reviewedBy: adminId,
-      },
-    }
+    { projection: { _id: 1, authorId: 1, title: 1 } }
   );
-  if (result.matchedCount === 1) return "updated";
+  if (!pendingProject) {
+    const existing = await projects.findOne(
+      { _id: projectId },
+      { projection: { _id: 1 } }
+    );
+    return existing ? "not-pending" : null;
+  }
 
-  const existing = await db
-    .collection<ProjectDoc>(PROJECTS)
-    .findOne({ _id: projectId }, { projection: { _id: 1 } });
+  const notificationId = await createProjectReviewNotification(
+    pendingProject.authorId.toHexString(),
+    pendingProject.title,
+    status,
+    reason
+  );
+  let matchedCount = 0;
+  try {
+    matchedCount = (
+      await projects.updateOne(
+        { _id: projectId, status: "pending" },
+        {
+          $set: {
+            status,
+            reviewReason: status === "rejected" ? reason : null,
+            reviewedAt: new Date(),
+            reviewedBy: adminId,
+          },
+        }
+      )
+    ).matchedCount;
+  } catch (error) {
+    await removeNotification(notificationId);
+    throw error;
+  }
+  if (matchedCount === 1) return "updated";
+
+  await removeNotification(notificationId);
+  const existing = await projects.findOne(
+    { _id: projectId },
+    { projection: { _id: 1 } }
+  );
   return existing ? "not-pending" : null;
 }
 
@@ -480,8 +514,32 @@ export async function deleteProject(
       ? { _id: projectId }
       : { _id: projectId, authorId: actorId };
   const db = await getDb();
-  const result = await db.collection<ProjectDoc>(PROJECTS).deleteOne(filter);
-  if (result.deletedCount === 0) return false;
+  const projects = db.collection<ProjectDoc>(PROJECTS);
+  let notificationId: ObjectId | null = null;
+  if (actor.role === "admin") {
+    const project = await projects.findOne(filter, {
+      projection: { _id: 1, authorId: 1, title: 1 },
+    });
+    if (!project) return false;
+    if (!project.authorId.equals(actorId)) {
+      notificationId = await createProjectDeletedNotification(
+        project.authorId.toHexString(),
+        project.title
+      );
+    }
+  }
+
+  let deletedCount = 0;
+  try {
+    deletedCount = (await projects.deleteOne(filter)).deletedCount;
+  } catch (error) {
+    if (notificationId) await removeNotification(notificationId);
+    throw error;
+  }
+  if (deletedCount === 0) {
+    if (notificationId) await removeNotification(notificationId);
+    return false;
+  }
 
   await db.collection<LikeDoc>(LIKES).deleteMany({ projectId });
   return true;

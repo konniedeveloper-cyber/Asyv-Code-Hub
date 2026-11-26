@@ -4,27 +4,25 @@ import { Providers } from "@/components/layout/providers";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { baseMetadata } from "@/lib/metadata";
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { DM_Mono, Google_Sans_Code } from "next/font/google";
 import type { ReactNode } from "react";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmMono = DM_Mono({
+  variable: "--font-dm-mono",
+  weight: ["300", "400", "500"],
+  style: ["normal", "italic"],
   subsets: ["latin"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const googleSansCode = Google_Sans_Code({
+  variable: "--font-google-sans-code",
+  weight: "variable",
+  style: ["normal", "italic"],
   subsets: ["latin"],
   display: "swap",
-});
-
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  axes: ["opsz", "SOFT"],
-  display: "swap",
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = baseMetadata;
@@ -45,10 +43,12 @@ export default function RootLayout({
   children: ReactNode;
 }>): ReactNode {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} bg-background text-foreground min-h-screen pb-28 font-sans antialiased`}
-      >
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${dmMono.variable} ${googleSansCode.variable}`}
+    >
+      <body className="bg-background text-foreground min-h-screen pb-28 font-sans antialiased">
         <Providers>
           <div className="site-frame site-frame--top" aria-hidden="true" />
           <div className="site-frame site-frame--left" aria-hidden="true" />

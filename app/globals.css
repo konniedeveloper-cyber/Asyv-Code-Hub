@@ -10,9 +10,9 @@
   --border: #e5e5e5;
   --ring: #0066ff;
   --frame: #ffffff;
-  --font-sans: "Google Sans Code", ui-monospace, monospace;
-  --font-mono: "Google Sans Code", ui-monospace, monospace;
-  --font-serif: "Google Sans Code", ui-monospace, monospace;
+  --font-site: var(--font-dm-mono), ui-monospace, monospace;
+  --font-code:
+    var(--font-google-sans-code), var(--font-dm-mono), ui-monospace, monospace;
 }
 
 .dark {
@@ -32,9 +32,9 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-ring: var(--ring);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
+  --font-sans: var(--font-site);
+  --font-mono: var(--font-code);
+  --font-serif: var(--font-site);
 }
 
 html {
@@ -455,7 +455,7 @@ html.dark {
 
 body {
   background-color: var(--background);
-  font-family: var(--font-sans);
+  font-family: var(--font-site);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -520,6 +520,7 @@ body {
 }
 
 .project-code-editor {
+  --code-editor-bg: var(--background);
   --code-keyword: #7c3aed;
   --code-string: #15803d;
   --code-number: #c2410c;
@@ -531,16 +532,37 @@ body {
   --code-punctuation: #475569;
 }
 
+.project-code-editor .cm-editor,
+.project-code-editor .cm-scroller,
+.project-code-editor .cm-content {
+  background-color: var(--code-editor-bg) !important;
+  color: var(--foreground);
+}
+
+.project-code-editor .cm-scroller {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 35%, transparent)
+    transparent;
+}
+
+.project-code-editor .cm-gutters {
+  background-color: var(--code-editor-bg) !important;
+  color: var(--muted-foreground);
+}
+
 .dark .project-code-editor {
-  --code-keyword: #c792ea;
-  --code-string: #a5d6a7;
-  --code-number: #f78c6c;
-  --code-comment: #7f9f9f;
-  --code-property: #82aaff;
-  --code-attribute: #ffcb6b;
-  --code-tag: #f07178;
-  --code-definition: #89ddff;
-  --code-punctuation: #cbd5e1;
+  --code-editor-bg: #171717;
+  --code-keyword: #e0b0ff;
+  --code-string: #b9f6ca;
+  --code-number: #ffab91;
+  --code-comment: #b0bec5;
+  --code-property: #a6c8ff;
+  --code-attribute: #ffe082;
+  --code-tag: #ff8a80;
+  --code-definition: #80deea;
+  --code-punctuation: #e0e0e0;
 }
 
 .skip-to-content {

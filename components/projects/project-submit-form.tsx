@@ -66,12 +66,12 @@ const CODE_HIGHLIGHTING = syntaxHighlighting(
 
 const CODE_EDITOR_THEME = EditorView.theme({
   "&": {
-    backgroundColor: "var(--background)",
+    backgroundColor: "var(--code-editor-bg)",
     color: "var(--foreground)",
     fontSize: "13px",
   },
   ".cm-scroller": {
-    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
+    fontFamily: "var(--font-mono)",
     lineHeight: "1.65",
   },
   ".cm-content": {

@@ -20,6 +20,21 @@ export type PublicUser = {
   grade: StudentGrade | null;
 };
 
+export type NotificationType =
+  | "project-approved"
+  | "project-rejected"
+  | "project-deleted";
+
+export type UserNotification = {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  href: string;
+  read: boolean;
+  createdAt: string;
+};
+
 export type ProjectCard = {
   id: string;
   title: string;
