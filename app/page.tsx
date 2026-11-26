@@ -26,12 +26,18 @@ export default function HomePage(): ReactNode {
             particleSize={2.2}
             density={4}
             color="currentColor"
-            highlightColor="#ff5a36"
+            highlightColor="currentColor"
+            wordColors={[
+              "var(--wordmark-asyv)",
+              "var(--wordmark-code)",
+              "var(--wordmark-hub)",
+            ]}
             highlightMode="motion"
             fontSize="clamp(2rem, 7vw, 5rem)"
             fontWeight={800}
             intro="gather"
             clickBurst
+            glow={false}
             className="text-foreground"
             style={{ height: 156, minHeight: 0 }}
           />

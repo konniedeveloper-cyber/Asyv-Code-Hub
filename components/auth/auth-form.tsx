@@ -4,7 +4,7 @@ import { readError, readUser } from "@/lib/parse";
 import { LIMITS } from "@/lib/limits";
 import { STUDENT_FAMILIES, STUDENT_GRADES } from "@/lib/types";
 import SlideCommit, { type SlideCommitHandle } from "@/components/SlideCommit";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useRef,
@@ -17,7 +17,9 @@ import {
 type AuthMode = "login" | "register";
 
 const fieldClassName =
-  "focus-ring mt-2 w-full rounded-xl border border-foreground/25 bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-foreground/45 hover:border-foreground/35 focus:border-ring";
+  "mt-2 focus-ring w-full rounded-xl border border-foreground/25 bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-foreground/45 hover:border-foreground/35 focus:border-ring";
+const fieldControlClassName =
+  "focus-ring w-full rounded-xl border border-foreground/25 bg-background px-4 py-3 text-sm outline-none transition-colors placeholder:text-foreground/45 hover:border-foreground/35 focus:border-ring";
 
 export function AuthForm(): ReactNode {
   const router = useRouter();
@@ -29,6 +31,7 @@ export function AuthForm(): ReactNode {
   const [grade, setGrade] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -203,6 +206,7 @@ export function AuthForm(): ReactNode {
             type="email"
             maxLength={LIMITS.email}
             autoComplete="email"
+            placeholder="Enter email..."
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={fieldClassName}
@@ -210,18 +214,33 @@ export function AuthForm(): ReactNode {
         </label>
         <label className="text-sm font-medium">
           Password
-          <input
-            required
-            type="password"
-            minLength={LIMITS.passwordMin}
-            maxLength={LIMITS.passwordMax}
-            autoComplete={
-              mode === "register" ? "new-password" : "current-password"
-            }
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className={fieldClassName}
-          />
+          <div className="relative mt-2">
+            <input
+              required
+              type={showPassword ? "text" : "password"}
+              minLength={LIMITS.passwordMin}
+              maxLength={LIMITS.passwordMax}
+              autoComplete={
+                mode === "register" ? "new-password" : "current-password"
+              }
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className={`${fieldControlClassName} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="focus-ring text-foreground/55 hover:text-foreground absolute inset-y-0 right-2 inline-flex w-9 items-center justify-center rounded-lg"
+            >
+              {showPassword ? (
+                <EyeOff aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <Eye aria-hidden="true" className="h-4 w-4" />
+              )}
+            </button>
+          </div>
           {mode === "register" ? (
             <span className="text-foreground/55 mt-2 block text-xs font-normal">
               At least {LIMITS.passwordMin} characters.

@@ -8,6 +8,7 @@ export interface ParticleTextProps {
   density?: number;
   color?: string;
   highlightColor?: string;
+  wordColors?: string[];
   highlightMode?: "motion" | "gradient";
   shape?: "circle" | "square" | "line";
   intro?: "gather" | "rain" | "spiral" | "scan";
@@ -32,7 +33,7 @@ type Settings = Required<Omit<ParticleTextProps, "className" | "style">>;
 type Intro = Settings["intro"];
 type Shape = Settings["shape"];
 type Rgb = { r: number; g: number; b: number };
-type Target = { x: number; y: number; alpha: number };
+type Target = { x: number; y: number; alpha: number; colorIndex: number };
 type Particle = {
   x: number;
   y: number;
@@ -42,6 +43,7 @@ type Particle = {
   targetY: number;
   weight: number;
   tone: number;
+  colorIndex: number;
   seed: number;
   depth: number;
   delay: number;
@@ -123,6 +125,7 @@ const ParticleText = ({
   density = 4,
   color = "currentColor",
   highlightColor = "#ff5a36",
+  wordColors = [],
   highlightMode = "motion",
   shape = "circle",
   intro = "gather",
@@ -154,6 +157,7 @@ const ParticleText = ({
       density,
       color,
       highlightColor,
+      wordColors,
       highlightMode,
       shape,
       intro,
@@ -208,16 +212,13 @@ const ParticleText = ({
     let visible = true;
     let alive = true;
     let colorKey = "";
-    let palette: string[] = [];
+    let palette: string[][] = [];
     let glowColor = "#000000";
     let accent: Rgb = { r: 0, g: 0, b: 0 };
     const bounds = { left: 0, right: 0, top: 0, bottom: 0 };
     const swirl = { x: 0, y: 0, aspect: 1 };
     const scan = { from: 0, to: 0, top: 0, bottom: 0, duration: 1 };
-    const buckets: Particle[][] = Array.from(
-      { length: TONES * FADES },
-      () => []
-    );
+    let buckets: Particle[][] = [];
     const pointer = { active: false, x: 0, y: 0, smoothX: 0, smoothY: 0 };
 
     const family = (s: Settings): string =>
@@ -225,7 +226,14 @@ const ParticleText = ({
         ? window.getComputedStyle(container).fontFamily || "sans-serif"
         : s.fontFamily;
     const layoutKey = (s: Settings) =>
-      [s.text, s.fontSize, s.fontWeight, family(s), s.density].join("|");
+      [
+        s.text,
+        s.fontSize,
+        s.fontWeight,
+        family(s),
+        s.density,
+        s.wordColors.join(","),
+      ].join("|");
     const sizeKey = () => {
       const rect = container.getBoundingClientRect();
       return `${Math.floor(rect.width)}x${Math.floor(rect.height)}@${Math.min(window.devicePixelRatio || 1, 2)}`;
@@ -245,24 +253,40 @@ const ParticleText = ({
     };
 
     const ensureColors = (s: Settings) => {
-      const current = window.getComputedStyle(container).color || "#000000";
+      const computed = window.getComputedStyle(container);
+      const current = computed.color || "#000000";
       const pick = (value: string) =>
         !value || INHERIT.test(String(value).trim()) ? current : value;
-      const base = pick(s.color);
-      const highlight = pick(s.highlightColor);
-      const key = `${base}|${highlight}`;
+      const resolve = (value: string) => {
+        const selected = pick(value);
+        const variable = /^var\(\s*(--[\w-]+)\s*\)$/.exec(selected);
+        return variable?.[1]
+          ? computed.getPropertyValue(variable[1]).trim() || current
+          : selected;
+      };
+      const base = resolve(s.color);
+      const highlight = resolve(s.highlightColor);
+      const wordColors = s.wordColors.map(resolve);
+      const key = `${base}|${highlight}|${wordColors.join("|")}`;
       if (key === colorKey) return;
       colorKey = key;
       const from = toRgb(base);
       accent = toRgb(highlight);
       glowColor = `rgb(${accent.r}, ${accent.g}, ${accent.b})`;
-      palette = Array.from({ length: TONES }, (_, i) => {
-        const t = i / (TONES - 1);
-        const r = Math.round(from.r + (accent.r - from.r) * t);
-        const g = Math.round(from.g + (accent.g - from.g) * t);
-        const b = Math.round(from.b + (accent.b - from.b) * t);
-        return `rgb(${r}, ${g}, ${b})`;
+      palette = (wordColors.length ? wordColors : [base]).map((wordColor) => {
+        const wordBase = wordColors.length ? toRgb(wordColor) : from;
+        return Array.from({ length: TONES }, (_, i) => {
+          const t = wordColors.length ? 0 : i / (TONES - 1);
+          const r = Math.round(wordBase.r + (accent.r - wordBase.r) * t);
+          const g = Math.round(wordBase.g + (accent.g - wordBase.g) * t);
+          const b = Math.round(wordBase.b + (accent.b - wordBase.b) * t);
+          return `rgb(${r}, ${g}, ${b})`;
+        });
       });
+      buckets = Array.from(
+        { length: palette.length * TONES * FADES },
+        () => []
+      );
     };
 
     const travelTime = (s: Settings, particle: Particle): number => {
@@ -592,7 +616,9 @@ const ParticleText = ({
           : particle.tone;
         const tone = Math.round(heat * (TONES - 1));
         const fade = Math.round((floor + (1 - floor) * progress) * (FADES - 1));
-        const bucket = buckets[fade * TONES + tone];
+        const bucket = buckets[
+          (particle.colorIndex * FADES + fade) * TONES + tone
+        ];
         bucket?.push(particle);
       }
 
@@ -619,13 +645,16 @@ const ParticleText = ({
         layerCtx.lineWidth = strokeWidth;
         layerCtx.lineCap = "round";
         let lit = false;
-        for (let fade = 0; fade < FADES; fade++) {
-          for (let tone = 1; tone < TONES; tone++) {
-            const group = buckets[fade * TONES + tone];
-            if (!group?.length) continue;
-            layerCtx.globalAlpha = (tone / (TONES - 1)) * fadeAlpha(fade);
-            drawGroup(layerCtx, group, sizeBase, s.shape);
-            lit = true;
+        for (let colorIndex = 0; colorIndex < palette.length; colorIndex++) {
+          for (let fade = 0; fade < FADES; fade++) {
+            for (let tone = 1; tone < TONES; tone++) {
+              const group =
+                buckets[(colorIndex * FADES + fade) * TONES + tone];
+              if (!group?.length) continue;
+              layerCtx.globalAlpha = (tone / (TONES - 1)) * fadeAlpha(fade);
+              drawGroup(layerCtx, group, sizeBase, s.shape);
+              lit = true;
+            }
           }
         }
         layerCtx.globalAlpha = 1;
@@ -638,15 +667,18 @@ const ParticleText = ({
         }
       }
 
-      for (let fade = 0; fade < FADES; fade++) {
-        ctx.globalAlpha = fadeAlpha(fade);
-        for (let tone = 0; tone < TONES; tone++) {
-          const group = buckets[fade * TONES + tone];
-          const toneColor = palette[tone];
-          if (!group?.length || !toneColor) continue;
-          if (lines) ctx.strokeStyle = toneColor;
-          else ctx.fillStyle = toneColor;
-          drawGroup(ctx, group, sizeBase, s.shape);
+      for (let colorIndex = 0; colorIndex < palette.length; colorIndex++) {
+        for (let fade = 0; fade < FADES; fade++) {
+          ctx.globalAlpha = fadeAlpha(fade);
+          for (let tone = 0; tone < TONES; tone++) {
+            const group =
+              buckets[(colorIndex * FADES + fade) * TONES + tone];
+            const toneColor = palette[colorIndex]?.[tone];
+            if (!group?.length || !toneColor) continue;
+            if (lines) ctx.strokeStyle = toneColor;
+            else ctx.fillStyle = toneColor;
+            drawGroup(ctx, group, sizeBase, s.shape);
+          }
         }
       }
       ctx.globalAlpha = 1;
@@ -747,6 +779,29 @@ const ParticleText = ({
       offCtx.fillStyle = "#ffffff";
       offCtx.fillText(content, padding - left, padding + ascent);
 
+      const wordRanges: Array<{
+        start: number;
+        end: number;
+        colorIndex: number;
+      }> = [];
+      const wordPattern = /\S+/g;
+      let wordMatch: RegExpExecArray | null;
+      while ((wordMatch = wordPattern.exec(content)) !== null) {
+        const wordIndex = wordRanges.length;
+        const wordText = wordMatch[0];
+        const textOffset = padding - left;
+        const start =
+          textOffset +
+          offCtx.measureText(content.slice(0, wordMatch.index)).width;
+        wordRanges.push({
+          start,
+          end: start + offCtx.measureText(wordText).width,
+          colorIndex: s.wordColors.length
+            ? Math.min(wordIndex, s.wordColors.length - 1)
+            : 0,
+        });
+      }
+
       const imageData = offCtx.getImageData(
         0,
         0,
@@ -760,10 +815,14 @@ const ParticleText = ({
         for (let x = 0; x < offscreen.width; x += sampleStep) {
           const alpha = imageData.data[(y * offscreen.width + x) * 4 + 3] ?? 0;
           if (alpha > 40) {
+            const wordRange = wordRanges.find(
+              (range) => x >= range.start && x < range.end
+            );
             targets.push({
               x: nextWidth / 2 - offscreen.width / 2 + x,
               y: nextHeight / 2 - offscreen.height / 2 + y,
               alpha: alpha / 255,
+              colorIndex: wordRange?.colorIndex ?? 0,
             });
           }
         }
@@ -813,6 +872,7 @@ const ParticleText = ({
           targetX: target.x,
           targetY: target.y,
           weight: target.alpha,
+          colorIndex: target.colorIndex,
           tone: clamp(
             target.x / Math.max(1, width) + (seed - 0.5) * 0.35,
             0,
