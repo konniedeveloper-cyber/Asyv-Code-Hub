@@ -156,10 +156,31 @@ export function AuthForm(): ReactNode {
           </label>
         ) : null}
         {mode === "register" ? (
-          <details className="border-foreground/10 rounded-xl border px-4 py-3">
-            <summary className="focus-ring cursor-pointer text-sm font-medium">
-              Student details{" "}
-              <span className="text-foreground/50 font-normal">(optional)</span>
+          <details className="student-details-disclosure border-foreground/10 rounded-xl border px-4 py-3">
+            <summary className="student-details-summary focus-ring flex w-full cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium">
+              <span>
+                Student details{" "}
+                <span className="text-foreground/50 font-normal">
+                  (optional)
+                </span>
+              </span>
+              <svg
+                className="student-details-chevron h-8 w-8 shrink-0"
+                viewBox="0 0 32 32"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  className="student-details-chevron-circle"
+                  cx="16"
+                  cy="16"
+                  r="13"
+                />
+                <path
+                  className="student-details-chevron-arrow"
+                  d="M10.5 13.5h11L16 20z"
+                />
+              </svg>
             </summary>
             <p className="text-foreground/55 mt-2 text-xs leading-relaxed">
               Add these now if you plan to post projects, or skip them to sign

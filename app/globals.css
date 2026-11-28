@@ -31,6 +31,65 @@
   --wordmark-hub: #e2c47d;
 }
 
+.student-details-disclosure {
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.student-details-disclosure:hover {
+  border-color: color-mix(in srgb, var(--foreground) 24%, transparent);
+  background-color: color-mix(in srgb, var(--foreground) 3%, transparent);
+}
+
+.student-details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.student-details-chevron {
+  color: var(--foreground);
+  transition:
+    transform 200ms ease,
+    color 180ms ease;
+}
+
+.student-details-chevron-circle {
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  transition:
+    fill 180ms ease,
+    stroke 180ms ease;
+}
+
+.student-details-chevron-arrow {
+  fill: currentColor;
+  transition: fill 180ms ease;
+}
+
+.student-details-summary:hover .student-details-chevron-circle,
+.student-details-disclosure[open] .student-details-chevron-circle {
+  fill: currentColor;
+}
+
+.student-details-summary:hover .student-details-chevron-arrow,
+.student-details-disclosure[open] .student-details-chevron-arrow {
+  fill: var(--background);
+}
+
+.student-details-disclosure[open] .student-details-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-details-disclosure,
+  .student-details-chevron,
+  .student-details-chevron-circle,
+  .student-details-chevron-arrow {
+    transition: none;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

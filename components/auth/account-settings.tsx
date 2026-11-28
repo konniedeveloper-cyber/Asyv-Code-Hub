@@ -9,6 +9,7 @@ import {
 } from "@/lib/parse";
 import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { STUDENT_FAMILIES, STUDENT_GRADES, type PublicUser } from "@/lib/types";
+import { MoreVertical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
@@ -79,6 +80,9 @@ export function AccountSettings(): ReactNode {
   const [savingImage, setSavingImage] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
   const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [family, setFamily] = useState("");
+  const [grade, setGrade] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -94,7 +98,10 @@ export function AccountSettings(): ReactNode {
           setError("The account response was invalid.");
           return;
         }
-        setUser(readUser(data));
+        const accountUser = readUser(data);
+        setUser(accountUser);
+        setFamily(accountUser?.family ?? "");
+        setGrade(accountUser?.grade ?? "");
       })
       .catch(() => {
         if (active) setError("Could not load your account. Try again.");
@@ -174,7 +181,10 @@ export function AccountSettings(): ReactNode {
       const response = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ family: user.family, grade: user.grade }),
+        body: JSON.stringify({
+          family: family || null,
+          grade: grade || null,
+        }),
       });
       const data: unknown = await response.json();
       if (!response.ok) {
@@ -187,6 +197,9 @@ export function AccountSettings(): ReactNode {
         return;
       }
       setUser(updatedUser);
+      setFamily(updatedUser.family ?? "");
+      setGrade(updatedUser.grade ?? "");
+      setEditingDetails(false);
       setProfileNotice("Family and grade saved to your profile.");
     } catch {
       setError("Could not update your family and grade. Try again.");
@@ -264,75 +277,114 @@ export function AccountSettings(): ReactNode {
           <p className="text-foreground/50 mt-2 text-xs capitalize">
             Role: {user.role}
           </p>
-          <div className="border-foreground/10 mt-5 grid gap-4 rounded-xl border p-4 sm:grid-cols-2">
-            <p className="text-foreground/55 text-xs leading-relaxed sm:col-span-2">
-              Family and grade are optional until you post a project. They will
-              be shown with your project owner details.
+          <div className="border-foreground/10 mt-5 rounded-xl border p-4">
+            <p className="text-foreground/55 text-xs leading-relaxed">
+              Family and grade are optional. They appear with your project owner
+              details.
             </p>
-            <label className="text-sm font-medium">
-              Family
-              <select
-                value={user.family ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setUser((current) =>
-                    current
-                      ? {
-                          ...current,
-                          family: isStudentFamily(value) ? value : null,
-                        }
-                      : current
-                  );
-                  setProfileNotice(null);
-                }}
-                className="focus-ring border-foreground/25 bg-background mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-              >
-                <option value="">Choose your family</option>
-                {STUDENT_FAMILIES.map((family) => (
-                  <option key={family} value={family}>
-                    {family}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm font-medium">
-              Grade
-              <select
-                value={user.grade ?? ""}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setUser((current) =>
-                    current
-                      ? {
-                          ...current,
-                          grade: isStudentGrade(value) ? value : null,
-                        }
-                      : current
-                  );
-                  setProfileNotice(null);
-                }}
-                className="focus-ring border-foreground/25 bg-background mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none"
-              >
-                <option value="">Choose your grade</option>
-                {STUDENT_GRADES.map((grade) => (
-                  <option key={grade} value={grade}>
-                    {grade}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              onClick={() => void saveStudentDetails()}
-              disabled={savingDetails}
-              className="focus-ring bg-foreground text-background inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-medium disabled:opacity-50 sm:col-span-2 sm:justify-self-start"
-            >
-              {savingDetails ? (
-                <LoadingIndicator label="Saving" />
-              ) : (
-                "Save family and grade"
-              )}
-            </button>
+            {editingDetails ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <label className="text-sm font-medium">
+                  Family
+                  <select
+                    value={family}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setFamily(isStudentFamily(value) ? value : "");
+                      setProfileNotice(null);
+                    }}
+                    className="focus-ring border-foreground/25 bg-background mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="">Choose your family</option>
+                    {STUDENT_FAMILIES.map((studentFamily) => (
+                      <option key={studentFamily} value={studentFamily}>
+                        {studentFamily}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-sm font-medium">
+                  Grade
+                  <select
+                    value={grade}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setGrade(isStudentGrade(value) ? value : "");
+                      setProfileNotice(null);
+                    }}
+                    className="focus-ring border-foreground/25 bg-background mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="">Choose your grade</option>
+                    {STUDENT_GRADES.map((studentGrade) => (
+                      <option key={studentGrade} value={studentGrade}>
+                        {studentGrade}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="flex flex-wrap gap-2 sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={() => void saveStudentDetails()}
+                    disabled={savingDetails}
+                    className="focus-ring bg-foreground text-background inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-medium disabled:opacity-50"
+                  >
+                    {savingDetails ? (
+                      <LoadingIndicator label="Saving" />
+                    ) : (
+                      "Save changes"
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFamily(user.family ?? "");
+                      setGrade(user.grade ?? "");
+                      setEditingDetails(false);
+                    }}
+                    disabled={savingDetails}
+                    className="focus-ring border-foreground/15 hover:bg-foreground/5 inline-flex min-h-10 items-center justify-center rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center justify-between gap-4">
+                <dl className="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-foreground/50 text-xs font-medium tracking-wide uppercase">
+                      Family
+                    </dt>
+                    <dd className="mt-1 truncate text-sm font-medium">
+                      {user.family ?? "Not set"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-foreground/50 text-xs font-medium tracking-wide uppercase">
+                      Grade
+                    </dt>
+                    <dd className="mt-1 truncate text-sm font-medium">
+                      {user.grade ?? "Not set"}
+                    </dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFamily(user.family ?? "");
+                    setGrade(user.grade ?? "");
+                    setProfileNotice(null);
+                    setEditingDetails(true);
+                  }}
+                  aria-label="Edit family and grade"
+                  title="Edit family and grade"
+                  className="focus-ring border-foreground/10 hover:bg-foreground/5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors"
+                >
+                  <MoreVertical className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+            )}
             {profileNotice ? (
               <p
                 role="status"
