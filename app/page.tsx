@@ -14,10 +14,7 @@ export const metadata: Metadata = createMetadata({
 
 export default function HomePage(): ReactNode {
   return (
-    <main
-      id="main-content"
-      className="flex flex-1 flex-col gap-10 pb-24 sm:gap-14"
-    >
+    <main id="main-content" className="flex flex-1 flex-col gap-10 sm:gap-14">
       <section className="relative mx-auto w-full max-w-275 px-6 pt-28 sm:px-10 sm:pt-36">
         <TopNotch />
         <div className="w-full">

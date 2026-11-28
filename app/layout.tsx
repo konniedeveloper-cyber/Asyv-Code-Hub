@@ -1,6 +1,7 @@
 import { Nav } from "@/components/layout/nav";
 import { PageBackdrop } from "@/components/layout/page-backdrop";
 import { Providers } from "@/components/layout/providers";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { SkipToContent } from "@/components/layout/skip-to-content";
 import { baseMetadata } from "@/lib/metadata";
 import type { Metadata, Viewport } from "next";
@@ -48,7 +49,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${dmMono.variable} ${googleSansCode.variable}`}
     >
-      <body className="bg-background text-foreground min-h-screen pb-28 font-sans antialiased">
+      <body className="bg-background text-foreground flex min-h-screen flex-col pb-3 font-sans antialiased">
         <Providers>
           <div className="site-frame site-frame--top" aria-hidden="true" />
           <div className="site-frame site-frame--left" aria-hidden="true" />
@@ -85,6 +86,7 @@ export default function RootLayout({
           <PageBackdrop />
           <Nav />
           {children}
+          <SiteFooter />
         </Providers>
       </body>
     </html>

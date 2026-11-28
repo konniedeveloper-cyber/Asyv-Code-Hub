@@ -31,6 +31,51 @@
   --wordmark-hub: #e2c47d;
 }
 
+.site-footer {
+  width: 100%;
+  max-width: 1440px;
+  margin: auto auto 0;
+  padding: 1.25rem 1.5rem 6rem;
+  pointer-events: none;
+}
+
+.site-footer__row {
+  display: grid;
+  max-width: 1000px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  margin: 0 auto;
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.site-footer__built {
+  text-align: left;
+}
+
+.site-footer__copyright {
+  text-align: center;
+}
+
+.site-footer__community {
+  text-align: right;
+}
+
+@media (max-width: 480px) {
+  .site-footer {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .site-footer__row {
+    gap: 0.5rem;
+    font-size: 0.58rem;
+  }
+}
+
 .student-details-disclosure {
   transition:
     border-color 180ms ease,
