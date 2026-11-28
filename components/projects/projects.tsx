@@ -7,6 +7,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import PulseHeart from "@/components/PulseHeart";
 import { Skeleton } from "@/components/ui/loading";
 import type { ProjectCard } from "@/lib/types";
+import {
+  projectTechnologyNames,
+  readProjectTechnologies,
+} from "@/lib/project-technologies";
 import { isRecord, readError, readLikeResult } from "@/lib/parse";
 
 export type ProjectsProps = {
@@ -15,13 +19,6 @@ export type ProjectsProps = {
 };
 
 type ProjectSort = "newest" | "popular";
-
-function getProjectLanguages(value: string): string[] {
-  return value
-    .split(/[,;]+/)
-    .map((language) => language.trim())
-    .filter(Boolean);
-}
 
 function isProjectCard(value: unknown): value is ProjectCard {
   return (
@@ -36,6 +33,7 @@ function isProjectCard(value: unknown): value is ProjectCard {
     (value.authorFamily === null || typeof value.authorFamily === "string") &&
     (value.authorGrade === null || typeof value.authorGrade === "string") &&
     typeof value.language === "string" &&
+    readProjectTechnologies(value.technologies) !== null &&
     (value.githubUrl === null || typeof value.githubUrl === "string") &&
     typeof value.likeCount === "number" &&
     typeof value.likedByMe === "boolean" &&
@@ -63,7 +61,7 @@ export function Projects({
   const [reloadKey, setReloadKey] = useState(0);
   const [sort, setSort] = useState<ProjectSort>("newest");
   const [query, setQuery] = useState("");
-  const [languageFilter, setLanguageFilter] = useState("all");
+  const [technologyFilter, setTechnologyFilter] = useState("all");
 
   useEffect(() => {
     function syncQuery(): void {
@@ -119,11 +117,13 @@ export function Projects({
     setReloadKey((key) => key + 1);
   }
 
-  const availableLanguages = useMemo(
+  const availableTechnologies = useMemo(
     () =>
       [
         ...new Set(
-          projects.flatMap((project) => getProjectLanguages(project.language))
+          projects.flatMap((project) =>
+            projectTechnologyNames(project.technologies, project.language)
+          )
         ),
       ].sort((left, right) => left.localeCompare(right)),
     [projects]
@@ -140,18 +140,19 @@ export function Projects({
           project.authorName,
           project.authorFamily ?? "",
           project.authorGrade ?? "",
-          project.language,
+          ...projectTechnologyNames(project.technologies, project.language),
           project.kind,
         ]
           .join(" ")
           .toLowerCase()
           .includes(normalizedQuery);
-      const matchesLanguage =
-        languageFilter === "all" ||
-        getProjectLanguages(project.language).some(
-          (language) => language.toLowerCase() === languageFilter.toLowerCase()
+      const matchesTechnology =
+        technologyFilter === "all" ||
+        projectTechnologyNames(project.technologies, project.language).some(
+          (technology) =>
+            technology.toLowerCase() === technologyFilter.toLowerCase()
         );
-      return matchesQuery && matchesLanguage;
+      return matchesQuery && matchesTechnology;
     });
 
     return [...matchingProjects].sort((left, right) => {
@@ -163,7 +164,7 @@ export function Projects({
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
       );
     });
-  }, [projects, query, sort, languageFilter]);
+  }, [projects, query, sort, technologyFilter]);
 
   const visibleProjects = viewMoreVisible
     ? sortedProjects.slice(0, 6)
@@ -210,20 +211,39 @@ export function Projects({
         {!loading && !error && projects.length > 0 ? (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <label className="text-foreground/50 flex items-center gap-2 text-xs font-medium tracking-[0.12em] uppercase">
-              Language
-              <select
-                value={languageFilter}
-                onChange={(event) => setLanguageFilter(event.target.value)}
-                aria-label="Filter projects by programming language"
-                className="border-foreground/10 bg-background text-foreground focus-ring rounded-lg border px-3 py-2 text-sm tracking-normal normal-case"
-              >
-                <option value="all">All languages</option>
-                {availableLanguages.map((language) => (
-                  <option key={language} value={language}>
-                    {language}
-                  </option>
-                ))}
-              </select>
+              Technology
+              <span className="technology-filter__control">
+                <select
+                  value={technologyFilter}
+                  onChange={(event) => setTechnologyFilter(event.target.value)}
+                  aria-label="Filter projects by technology"
+                  className="border-foreground/10 bg-background text-foreground focus-ring appearance-none rounded-lg border py-2 pr-11 pl-3 text-sm tracking-normal normal-case"
+                >
+                  <option value="all">All technologies</option>
+                  {availableTechnologies.map((technology) => (
+                    <option key={technology} value={technology}>
+                      {technology}
+                    </option>
+                  ))}
+                </select>
+                <svg
+                  className="student-details-chevron pointer-events-none absolute top-1/2 right-1.5 h-8 w-8 -translate-y-1/2"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle
+                    className="student-details-chevron-circle"
+                    cx="16"
+                    cy="16"
+                    r="13"
+                  />
+                  <path
+                    className="student-details-chevron-arrow"
+                    d="M10.5 13.5h11L16 20z"
+                  />
+                </svg>
+              </span>
             </label>
             <div
               role="group"
@@ -314,7 +334,7 @@ export function Projects({
             </h3>
             <p className="text-foreground/60 mt-2 text-sm">
               {projects.length
-                ? "Try another search or programming language."
+                ? "Try another search or technology."
                 : "Be the first to share something you&apos;ve built."}
             </p>
             {projects.length ? (
@@ -322,7 +342,7 @@ export function Projects({
                 type="button"
                 onClick={() => {
                   setQuery("");
-                  setLanguageFilter("all");
+                  setTechnologyFilter("all");
                 }}
                 className="focus-ring border-foreground/10 hover:bg-foreground/5 mt-5 inline-flex rounded-xl border px-4 py-2.5 text-sm font-medium"
               >
@@ -417,6 +437,11 @@ function ProjectCardView({
     }
   }
 
+  const technologyNames = projectTechnologyNames(
+    project.technologies,
+    project.language
+  );
+
   return (
     <article
       id={project.id}
@@ -456,12 +481,30 @@ function ProjectCardView({
             )}
             {project.kind === "files" ? "HTML project" : "External project"}
           </span>
-          <span aria-hidden="true">·</span>
-          <span>{project.language || "Language not specified"}</span>
         </div>
         <h3 className="text-xl leading-snug font-semibold tracking-tight">
           {project.title}
         </h3>
+        {technologyNames.length > 0 ? (
+          <div
+            aria-label="Technologies used"
+            className="mt-3 flex flex-wrap gap-1.5"
+          >
+            {technologyNames.slice(0, 6).map((technology) => (
+              <span
+                key={technology}
+                className="border-foreground/10 bg-foreground/[0.03] text-foreground/65 rounded-full border px-2.5 py-1 text-[11px]"
+              >
+                {technology}
+              </span>
+            ))}
+            {technologyNames.length > 6 ? (
+              <span className="text-foreground/50 px-1 py-1 text-[11px]">
+                +{technologyNames.length - 6}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         <p className="text-foreground/65 mt-2 line-clamp-3 text-sm leading-relaxed">
           {project.description}
         </p>

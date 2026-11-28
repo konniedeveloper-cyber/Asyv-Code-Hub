@@ -10,8 +10,17 @@ import { tags } from "@lezer/highlight";
 import CodeMirror from "@uiw/react-codemirror";
 import { buildPreviewDocument } from "@/lib/preview-document";
 import { isRecord, readError, readProjectId, readUser } from "@/lib/parse";
+import {
+  emptyProjectTechnologies,
+  readProjectTechnologies,
+} from "@/lib/project-technologies";
 import { LIMITS } from "@/lib/limits";
-import { STUDENT_FAMILIES, STUDENT_GRADES } from "@/lib/types";
+import {
+  STUDENT_FAMILIES,
+  STUDENT_GRADES,
+  type ProjectTechnologies,
+} from "@/lib/types";
+import { ProjectTechnologyFields } from "@/components/projects/project-technology-fields";
 import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { Code2, ExternalLink, Link2, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -167,7 +176,10 @@ export function ProjectSubmitForm({
   const [kind, setKind] = useState<ProjectKind>("files");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [language, setLanguage] = useState("");
+  const [legacyLanguage, setLegacyLanguage] = useState("");
+  const [technologies, setTechnologies] = useState<ProjectTechnologies>(
+    emptyProjectTechnologies
+  );
   const [githubUrl, setGithubUrl] = useState("");
   const [url, setUrl] = useState("");
   const [html, setHtml] = useState("");
@@ -255,8 +267,13 @@ export function ProjectSubmitForm({
         setDescription(
           typeof project.description === "string" ? project.description : ""
         );
-        setLanguage(
+        setLegacyLanguage(
           typeof project.language === "string" ? project.language : ""
+        );
+        setTechnologies(
+          readProjectTechnologies(
+            "technologies" in project ? project.technologies : undefined
+          ) ?? emptyProjectTechnologies()
         );
         setGithubUrl(
           typeof project.githubUrl === "string" ? project.githubUrl : ""
@@ -485,12 +502,22 @@ export function ProjectSubmitForm({
     setError(null);
     const draft =
       kind === "link"
-        ? { kind, title, description, language, githubUrl, url, coverImage }
+        ? {
+            kind,
+            title,
+            description,
+            language: legacyLanguage,
+            technologies,
+            githubUrl,
+            url,
+            coverImage,
+          }
         : {
             kind,
             title,
             description,
-            language,
+            language: legacyLanguage,
+            technologies,
             githubUrl,
             coverImage,
             files: [
@@ -646,19 +673,12 @@ export function ProjectSubmitForm({
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium">
-          Programming language
-          <input
-            required
-            minLength={2}
-            maxLength={80}
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
-            placeholder="e.g. JavaScript, Python, HTML/CSS"
-            className={fieldClassName}
-          />
-        </label>
+      <ProjectTechnologyFields
+        value={technologies}
+        onChange={setTechnologies}
+      />
+
+      <div>
         <label className="text-sm font-medium">
           Public GitHub repository{" "}
           <span className="text-foreground/50 font-normal">(optional)</span>
@@ -884,7 +904,10 @@ export function ProjectSubmitForm({
                     <Trash2 aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="project-code-editor border-foreground/10 bg-background overflow-hidden rounded-xl border">
+                <div
+                  data-lenis-prevent
+                  className="project-code-editor border-foreground/10 bg-background overflow-hidden rounded-xl border"
+                >
                   <CodeMirror
                     value={file.content}
                     onChange={(nextValue) =>
@@ -1003,7 +1026,10 @@ function CodeEditor({
           />
         </label>
       </span>
-      <div className="project-code-editor border-foreground/10 focus-within:ring-ring/40 bg-background mt-2 overflow-hidden rounded-xl border focus-within:ring-2">
+      <div
+        data-lenis-prevent
+        className="project-code-editor border-foreground/10 focus-within:ring-ring/40 bg-background mt-2 overflow-hidden rounded-xl border focus-within:ring-2"
+      >
         <CodeMirror
           value={value}
           onChange={(nextValue) => onChange(nextValue.slice(0, LIMITS.file))}

@@ -10,6 +10,68 @@ export const STUDENT_GRADES = ["Ijabo", "Ingabo", "Ingabe"] as const;
 export type StudentFamily = (typeof STUDENT_FAMILIES)[number];
 export type StudentGrade = (typeof STUDENT_GRADES)[number];
 
+export const PROJECT_TECHNOLOGY_OPTIONS = {
+  frameworks: [
+    "Angular",
+    "ASP.NET Core",
+    "Astro",
+    "Bootstrap",
+    "Django",
+    "Express.js",
+    "FastAPI",
+    "Flask",
+    "Flutter",
+    "Laravel",
+    "Material UI",
+    "Next.js",
+    "NestJS",
+    "Nuxt",
+    "React",
+    "React Native",
+    "Ruby on Rails",
+    "Spring Boot",
+    "Svelte",
+    "SvelteKit",
+    "Symfony",
+    "Vue.js",
+    "WordPress",
+  ],
+  programmingLanguages: [
+    "C",
+    "C#",
+    "C++",
+    "Dart",
+    "Go",
+    "HTML",
+    "Java",
+    "JavaScript",
+    "Kotlin",
+    "PHP",
+    "Python",
+    "Ruby",
+    "Rust",
+    "SQL",
+    "Swift",
+    "TypeScript",
+  ],
+  stylingLanguages: ["CSS", "Less", "Sass", "SCSS", "Stylus", "Tailwind CSS"],
+  databases: [
+    "DynamoDB",
+    "Firebase Firestore",
+    "MariaDB",
+    "MongoDB",
+    "MySQL",
+    "Oracle Database",
+    "PostgreSQL",
+    "Redis",
+    "SQLite",
+    "Supabase",
+  ],
+} as const;
+
+export type ProjectTechnologyCategory = keyof typeof PROJECT_TECHNOLOGY_OPTIONS;
+export type ProjectTechnologies = Record<ProjectTechnologyCategory, string[]>;
+
 export type PublicUser = {
   id: string;
   name: string;
@@ -46,6 +108,7 @@ export type ProjectCard = {
   authorFamily: StudentFamily | null;
   authorGrade: StudentGrade | null;
   language: string;
+  technologies: ProjectTechnologies;
   githubUrl: string | null;
   likeCount: number;
   likedByMe: boolean;
@@ -67,6 +130,7 @@ export type ProjectManagementItem = {
   authorFamily: StudentFamily | null;
   authorGrade: StudentGrade | null;
   language: string;
+  technologies: ProjectTechnologies;
   githubUrl: string | null;
   status: ProjectStatus;
   reviewReason: string | null;
@@ -89,6 +153,7 @@ type ProjectDraftDetails = {
   title: string;
   description: string;
   language: string;
+  technologies: ProjectTechnologies;
   githubUrl: string | null;
   coverImage: string | null;
 };

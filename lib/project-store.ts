@@ -6,6 +6,10 @@ import {
   createProjectReviewNotification,
   removeNotification,
 } from "@/lib/notifications";
+import {
+  emptyProjectTechnologies,
+  readProjectTechnologies,
+} from "@/lib/project-technologies";
 import type {
   ProjectCard,
   ProjectDetail,
@@ -15,6 +19,7 @@ import type {
   ProjectSourceFile,
   PublicUser,
   ProjectStatus,
+  ProjectTechnologies,
   StudentFamily,
   StudentGrade,
 } from "@/lib/types";
@@ -31,6 +36,7 @@ type ProjectDoc = {
   title: string;
   description: string;
   language?: string;
+  technologies?: ProjectTechnologies;
   githubUrl?: string | null;
   kind: "link" | "files";
   url: string | null;
@@ -74,6 +80,8 @@ function toCard(
     authorFamily: doc.authorFamily ?? null,
     authorGrade: doc.authorGrade ?? null,
     language: doc.language ?? "",
+    technologies:
+      readProjectTechnologies(doc.technologies) ?? emptyProjectTechnologies(),
     githubUrl: doc.githubUrl ?? null,
     likeCount,
     likedByMe,
@@ -104,6 +112,8 @@ function toManagementItem(doc: ProjectDoc): ProjectManagementItem {
     authorFamily: doc.authorFamily ?? null,
     authorGrade: doc.authorGrade ?? null,
     language: doc.language ?? "",
+    technologies:
+      readProjectTechnologies(doc.technologies) ?? emptyProjectTechnologies(),
     githubUrl: doc.githubUrl ?? null,
     status: doc.status ?? "approved",
     reviewReason: doc.reviewReason ?? null,
@@ -131,6 +141,7 @@ export async function listProjects(
           authorFamily: 1,
           authorGrade: 1,
           language: 1,
+          technologies: 1,
           githubUrl: 1,
           createdAt: 1,
         },
@@ -187,6 +198,7 @@ export async function listMyProjects(
           authorFamily: 1,
           authorGrade: 1,
           language: 1,
+          technologies: 1,
           githubUrl: 1,
           status: 1,
           reviewReason: 1,
@@ -217,6 +229,7 @@ export async function listAdminProjects(): Promise<ProjectManagementItem[]> {
           authorFamily: 1,
           authorGrade: 1,
           language: 1,
+          technologies: 1,
           githubUrl: 1,
           status: 1,
           reviewReason: 1,
@@ -266,6 +279,7 @@ export async function createProject(
     title: draft.title,
     description: draft.description,
     language: draft.language,
+    technologies: draft.technologies,
     githubUrl: draft.githubUrl,
     kind: draft.kind,
     url: draft.kind === "link" ? draft.url : null,
@@ -309,6 +323,8 @@ export async function getEditableProject(
       title: doc.title,
       description: doc.description,
       language: doc.language ?? "",
+      technologies:
+        readProjectTechnologies(doc.technologies) ?? emptyProjectTechnologies(),
       githubUrl: doc.githubUrl ?? null,
       url: doc.url ?? "",
       coverImage: doc.coverImage ?? null,
@@ -328,6 +344,8 @@ export async function getEditableProject(
     title: doc.title,
     description: doc.description,
     language: doc.language ?? "",
+    technologies:
+      readProjectTechnologies(doc.technologies) ?? emptyProjectTechnologies(),
     githubUrl: doc.githubUrl ?? null,
     files,
     coverImage: doc.coverImage ?? null,
@@ -353,6 +371,7 @@ export async function updateProject(
           title: draft.title,
           description: draft.description,
           language: draft.language,
+          technologies: draft.technologies,
           githubUrl: draft.githubUrl,
           kind: "link" as const,
           url: draft.url,
@@ -370,6 +389,7 @@ export async function updateProject(
           title: draft.title,
           description: draft.description,
           language: draft.language,
+          technologies: draft.technologies,
           githubUrl: draft.githubUrl,
           kind: "files" as const,
           url: null,

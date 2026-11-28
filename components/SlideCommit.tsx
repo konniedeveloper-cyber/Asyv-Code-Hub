@@ -62,12 +62,49 @@ const MIN_PENDING = 300;
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
 const SHAKE = [0, -5, 5, -3, 3, -1, 0];
 const STYLE = `
+@property --sc-star-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
 @keyframes sc-spin { to { transform: rotate(360deg); } }
+@keyframes sc-star-orbit { to { --sc-star-angle: 360deg; } }
 .sc-spinner { animation: sc-spin 1s linear infinite; animation-play-state: paused; }
 .sc-root[data-phase='pending'] .sc-spinner { animation-play-state: running; }
+.sc-star-border {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--sc-star-angle),
+    rgba(255, 255, 255, 0.12) 0deg 300deg,
+    rgba(255, 255, 255, 0.38) 322deg,
+    rgba(255, 255, 255, 0.95) 345deg,
+    rgba(255, 255, 255, 0.12) 360deg
+  ) border-box;
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: sc-star-orbit 4s linear infinite;
+}
+.sc-root[data-phase='pending'] .sc-star-border,
+.sc-root[data-phase='done'] .sc-star-border,
+.sc-root[data-phase='error'] .sc-star-border {
+  animation-play-state: paused;
+  opacity: 0.5;
+}
 @media (prefers-reduced-motion: reduce) {
   .sc-spinner { animation: sc-breathe 1.4s ease-in-out infinite; animation-play-state: paused; }
   .sc-root[data-phase='pending'] .sc-spinner { animation-play-state: running; }
+  .sc-star-border { animation: none; }
   @keyframes sc-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 }
 `;
@@ -483,6 +520,7 @@ const SlideCommit = React.forwardRef<SlideCommitHandle, SlideCommitProps>(
           style={{ transform: trackTransform }}
           onPointerDown={down}
         >
+          <span className="sc-star-border" aria-hidden="true" />
           <motion.span
             className="pointer-events-none absolute inset-0 grid place-items-center [font-size:var(--sc-font)] leading-none font-medium tracking-[-0.006em] whitespace-nowrap"
             style={{ opacity: say }}

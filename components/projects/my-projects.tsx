@@ -2,6 +2,10 @@
 
 import type { ProjectManagementItem, ProjectStatus } from "@/lib/types";
 import { isRecord, readError } from "@/lib/parse";
+import {
+  projectTechnologyNames,
+  readProjectTechnologies,
+} from "@/lib/project-technologies";
 import { LoadingIndicator, Skeleton } from "@/components/ui/loading";
 import { ExternalLink, Pencil, RotateCw, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +24,7 @@ function isProject(value: unknown): value is ProjectManagementItem {
     (value.authorFamily === null || typeof value.authorFamily === "string") &&
     (value.authorGrade === null || typeof value.authorGrade === "string") &&
     typeof value.language === "string" &&
+    readProjectTechnologies(value.technologies) !== null &&
     (value.githubUrl === null || typeof value.githubUrl === "string") &&
     (value.status === "pending" ||
       value.status === "approved" ||
@@ -215,7 +220,10 @@ export function MyProjects(): ReactNode {
                   {project.description}
                 </p>
                 <p className="text-foreground/50 mt-2 text-xs">
-                  {project.language || "Language not specified"}
+                  {projectTechnologyNames(
+                    project.technologies,
+                    project.language
+                  ).join(", ") || "Technologies not specified"}
                   {project.githubUrl ? (
                     <>
                       {" · "}

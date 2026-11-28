@@ -126,6 +126,26 @@
   transform: rotate(180deg);
 }
 
+.technology-filter__control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.technology-filter__control > select {
+  max-width: min(240px, 52vw);
+}
+
+.technology-filter__control:hover .student-details-chevron-circle,
+.technology-filter__control:focus-within .student-details-chevron-circle {
+  fill: currentColor;
+}
+
+.technology-filter__control:hover .student-details-chevron-arrow,
+.technology-filter__control:focus-within .student-details-chevron-arrow {
+  fill: var(--background);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .student-details-disclosure,
   .student-details-chevron,

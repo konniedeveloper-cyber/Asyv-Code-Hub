@@ -1,5 +1,9 @@
 import { LIMITS } from "@/lib/limits";
 import { STUDENT_FAMILIES, STUDENT_GRADES } from "@/lib/types";
+import {
+  emptyProjectTechnologies,
+  readProjectTechnologies,
+} from "@/lib/project-technologies";
 import type {
   Credentials,
   ProjectDraft,
@@ -321,6 +325,10 @@ export function parseProjectDraft(
   const title = readString(input, "title");
   const description = readString(input, "description");
   const language = readString(input, "language");
+  const technologies =
+    input.technologies === undefined
+      ? emptyProjectTechnologies()
+      : readProjectTechnologies(input.technologies);
   const kind = input.kind;
 
   if (title.length < 2 || title.length > LIMITS.title) {
@@ -337,10 +345,16 @@ export function parseProjectDraft(
     };
   }
 
-  if (language.length < 2 || language.length > 80) {
+  if (language.length > 80) {
     return {
       ok: false,
-      error: "Programming language must be 2 to 80 characters.",
+      error: "Legacy language details must be 80 characters or fewer.",
+    };
+  }
+  if (!technologies) {
+    return {
+      ok: false,
+      error: "Choose technologies from the provided lists.",
     };
   }
 
@@ -371,6 +385,7 @@ export function parseProjectDraft(
         title,
         description,
         language,
+        technologies,
         githubUrl: githubResult.url,
         url,
         coverImage: coverResult.coverImage,
@@ -389,6 +404,7 @@ export function parseProjectDraft(
         title,
         description,
         language,
+        technologies,
         githubUrl: githubResult.url,
         files: result.files,
         coverImage: coverResult.coverImage,
