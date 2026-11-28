@@ -616,9 +616,8 @@ const ParticleText = ({
           : particle.tone;
         const tone = Math.round(heat * (TONES - 1));
         const fade = Math.round((floor + (1 - floor) * progress) * (FADES - 1));
-        const bucket = buckets[
-          (particle.colorIndex * FADES + fade) * TONES + tone
-        ];
+        const bucket =
+          buckets[(particle.colorIndex * FADES + fade) * TONES + tone];
         bucket?.push(particle);
       }
 
@@ -648,8 +647,7 @@ const ParticleText = ({
         for (let colorIndex = 0; colorIndex < palette.length; colorIndex++) {
           for (let fade = 0; fade < FADES; fade++) {
             for (let tone = 1; tone < TONES; tone++) {
-              const group =
-                buckets[(colorIndex * FADES + fade) * TONES + tone];
+              const group = buckets[(colorIndex * FADES + fade) * TONES + tone];
               if (!group?.length) continue;
               layerCtx.globalAlpha = (tone / (TONES - 1)) * fadeAlpha(fade);
               drawGroup(layerCtx, group, sizeBase, s.shape);
@@ -671,8 +669,7 @@ const ParticleText = ({
         for (let fade = 0; fade < FADES; fade++) {
           ctx.globalAlpha = fadeAlpha(fade);
           for (let tone = 0; tone < TONES; tone++) {
-            const group =
-              buckets[(colorIndex * FADES + fade) * TONES + tone];
+            const group = buckets[(colorIndex * FADES + fade) * TONES + tone];
             const toneColor = palette[colorIndex]?.[tone];
             if (!group?.length || !toneColor) continue;
             if (lines) ctx.strokeStyle = toneColor;

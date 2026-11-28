@@ -10,9 +10,9 @@
   --border: #e5e5e5;
   --ring: #0066ff;
   --frame: #ffffff;
-  --wordmark-asyv: #4f795d;
-  --wordmark-code: #aa663d;
-  --wordmark-hub: #776443;
+  --wordmark-asyv: #287348;
+  --wordmark-code: #d65f24;
+  --wordmark-hub: #806126;
   --font-site: var(--font-dm-mono), ui-monospace, monospace;
   --font-code:
     var(--font-google-sans-code), var(--font-dm-mono), ui-monospace, monospace;
@@ -26,9 +26,9 @@
   --border: #262626;
   --ring: #3b82f6;
   --frame: #0a0a0a;
-  --wordmark-asyv: #82a88d;
-  --wordmark-code: #cd9467;
-  --wordmark-hub: #b8a27e;
+  --wordmark-asyv: #83d49b;
+  --wordmark-code: #ff9a61;
+  --wordmark-hub: #e2c47d;
 }
 
 @theme inline {
